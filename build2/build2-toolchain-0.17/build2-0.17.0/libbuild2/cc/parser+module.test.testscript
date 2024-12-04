@@ -1,0 +1,198 @@
+# file      : libbuild2/cc/parser+module.test.testscript
+# license   : MIT; see accompanying LICENSE file
+
+# Test C++ module constructs.
+#
+
+# NOTE: currently header unit imports don't produce anything.
+#
+
+: module-iface
+:
+$* <<EOI >>EOI
+export module foo;
+EOI
+
+: module-impl
+:
+$* <<EOI >>EOI
+module foo;
+EOI
+
+: module-iface-part
+:
+$* <<EOI >>EOI
+export module foo:part;
+EOI
+
+: module-impl-part
+:
+$* <<EOI >>EOI
+module foo.bar:part.sub;
+EOI
+
+: import
+:
+$* <<EOI >>EOI
+import foo;
+import foo.bar;
+import foo.bar.baz;
+EOI
+
+: import-header
+:
+$* <<EOI
+import "foo.h";
+import <sys/foo.h>;
+import "/usr/include/stdio.h" [[__translated]];
+EOI
+
+: import-part
+:
+$* <<EOI >>EOO
+module foo;
+import :part;
+import :part.sub;
+EOI
+module foo;
+import foo:part;
+import foo:part.sub;
+EOO
+
+: import-part-from-part
+:
+$* <<EOI >>EOO
+module foo:part;
+import :part.sub;
+EOI
+module foo:part;
+import foo:part.sub;
+EOO
+
+: export-imported
+:
+$* <<EOI >>EOO
+export import foo;
+export import "foo.h";
+export import <sys/foo.h>;
+EOI
+export import foo;
+EOO
+
+: non-import
+:
+$* <<EOI
+import
+foo;
+export import(*a);
+import::inner xi = {};
+::import <a>;
+class import<int>;
+import ::x;
+EOI
+
+: non-module
+:
+$* <<EOI
+#pragma import module foo;
+#pragma export module foo;
+#pragma module foo;
+export namespace bar {int fox ();}
+module
+foo;
+foo::module();
+module::inner yi = {};
+EOI
+
+: attribute
+:
+$* <<EOI >>EOO
+module bar [[module({module})]];
+import foo [[export({import})]];
+import "foo.h" [[export({import})]];
+EOI
+module bar;
+import foo;
+EOO
+
+: import-duplicate
+:
+$* <<EOI >>EOO
+import foo;
+import bar.baz;
+import foo;
+import bar . baz;
+EOI
+import foo;
+import bar.baz;
+EOO
+
+: part-out-purview
+:
+$* <<EOI 2>>EOE != 0
+module;
+import :part
+module foo;
+EOI
+<stdin>:2:8: error: partition importation out of module purview
+EOE
+
+: brace-missing
+:
+$* <<EOI 2>>EOE
+export
+{
+  class foo
+  {
+  //};
+  module foo;
+}
+EOI
+<stdin>:8:1: warning: missing '}'
+EOE
+
+: brace-stray
+:
+$* <<EOI 2>>EOE
+export
+{
+  class foo
+  {
+  };}
+}
+module foo;
+EOI
+<stdin>:6:1: warning: extraneous '}'
+EOE
+
+: module-missing-name
+:
+$* <<EOI 2>>EOE != 0
+module ;
+EOI
+<stdin>:1:1: error: module declaration expected after global module fragment
+EOE
+
+: import-missing-semi
+:
+$* <<EOI 2>>EOE != 0
+import foo
+EOI
+<stdin>:2:1: error: ';' expected instead of <end of file>
+EOE
+
+: module-missing-semi
+:
+$* <<EOI 2>>EOE != 0
+export module foo
+EOI
+<stdin>:2:1: error: ';' expected instead of <end of file>
+EOE
+
+: import-missing-header
+:
+$* <<EOI 2>>EOE != 0
+import <foo.h;
+EOI
+<stdin>:2:1: error: closing '>' expected after header name
+EOE

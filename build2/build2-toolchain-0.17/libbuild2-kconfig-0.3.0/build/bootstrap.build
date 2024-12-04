@@ -1,0 +1,7 @@
+project = libbuild2-kconfig
+
+using version
+using config
+using test
+using install
+using dist

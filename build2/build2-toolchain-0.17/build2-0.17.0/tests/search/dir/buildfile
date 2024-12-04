@@ -1,0 +1,7 @@
+# file      : tests/search/dir/buildfile
+# license   : MIT; see accompanying LICENSE file
+
+# Test loading of dir{} buildfiles during target search.
+#
+
+./: testscript $b

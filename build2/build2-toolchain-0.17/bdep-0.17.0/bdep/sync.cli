@@ -1,0 +1,352 @@
+// file      : bdep/sync.cli
+// license   : MIT; see accompanying LICENSE file
+
+include <bdep/project.cli>;
+
+"\section=1"
+"\name=bdep-sync"
+"\summary=synchronize project and build configurations"
+
+namespace bdep
+{
+  {
+    "<options>
+     <prj-spec> <prj-dir>
+     <pkg-spec> <pkg-dir>
+     <cfg-spec> <cfg-name> <cfg-dir>
+     <dep-spec> <pkg> <ver>
+     <pkg-args> <pkg> <cfg-var>",
+
+    "\h|SYNOPSIS|
+
+     \c{\b{bdep sync} [<options>] [<pkg-spec>] [<cfg-spec>] [<pkg-args>]\n
+        \b{bdep sync} [<options>] [<pkg-spec>] [<cfg-spec>] \ \b{--upgrade}|\b{-u} | \b{--patch}|\b{-p}\n
+        \b{bdep sync} [<options>] [<pkg-spec>] [<cfg-spec>] [\b{--upgrade}|\b{-u} | \b{--patch}|\b{-p}]\n
+        \ \ \ \ \ \ \ \ \ \ <dep-spec>... [<cfg-var>...]
+        }
+
+     \c{<dep-spec> = <pkg>[\b{/}<ver>]\n
+        <cfg-spec> = (\b{@}<cfg-name> | \b{--config}|\b{-c} <cfg-dir>)... | \b{--all}|\b{-a}\n
+        <pkg-spec> = (\b{--directory}|\b{-d} <pkg-dir>)... | <prj-spec>\n
+        <prj-spec> = \b{--directory}|\b{-d} <prj-dir>\n
+        <pkg-args> = (\b{?}<pkg> | <cfg-var>)...}
+
+     \h|DESCRIPTION|
+
+     The \cb{sync} command synchronizes a project with its build
+     configurations. The first form (no \cb{--upgrade} or \cb{--patch} and
+     only <pkg-args> arguments, if any, are specified) upgrades the project
+     packages to the latest version/iteration, adjusts their dependencies
+     according to the latest manifest information, and updates the lockfile.
+
+     If no project or package directory is specified, then the current working
+     directory is assumed. If no configuration is specified, then the default
+     configurations are assumed. See \l{bdep-projects-configs(1)} for details
+     on specifying projects and configurations. Optional <pkg-args> are the
+     additional dependency packages and/or configuration variables to pass to
+     the underlying \l{bpkg-pkg-build(1)} command.
+
+     The second form (no arguments but either \cb{--upgrade} or \cb{--patch}
+     is specified), in addition to the first form's functionality, also
+     upgrades or patches immediate (by default or if
+     \c{\b{--immediate}|\b{-i}} is specified) or all (if
+     \c{\b{--recursive}|\b{-r}} is specified) dependencies of the specified
+     project packages. If no project packages are specified explicitly, then
+     this form upgrades or patches dependencies of all the initialized
+     packages in a project.
+
+     The third form (one or more <dep-spec> arguments are specified), in
+     addition to the first form's functionality, also upgrades (by default or
+     if \cb{--upgrade} is specified) or patches (if \cb{--patch} is specified)
+     the specified dependencies. If \c{\b{--immediate}|\b{-i}} or
+     \c{\b{--recursive}|\b{-r}} is specified, then it also upgrades or patches
+     the immediate or all dependencies of the specified dependencies,
+     respectively. Alternative to \cb{--upgrade} and \cb{--patch}, the desired
+     upgrade (or downgrade) version can be specified explicitly.
+
+     Note also that \c{\b{--immediate}|\b{-i}} or \c{\b{--recursive}|\b{-r}}
+     can only be specified with an explicit \cb{--upgrade} or \cb{--patch}.
+
+     Configuration variables can be specified to only apply to specific
+     packages in <pkg-args> and <dep-spec> using the argument grouping
+     mechanism (\l{bdep-argument-grouping(1)}). Additionally, packages in
+     <pkg-args> can be placed into specific linked configurations by
+     specifying the configuration with one of the \cb{--config*} options
+     (or \cb{@} notation) using the same grouping mechanism.
+
+     If during synchronization a build-time dependency is encountered and
+     there is no build configuration of a suitable type associated with the
+     project, then the user is prompted (unless the respective
+     \cb{--create-*-config} option is specified) to automatically create such
+     a configuration and associate it with the project. See
+     \l{bpkg-cfg-create(1)} for background on configuration types.
+
+     \h|EXAMPLES|
+
+     As an example, consider project \cb{prj} with two packages, \cb{foo}
+     and \cb{libfoo}:
+
+     \
+     prj/
+    ├── foo/
+    └── libfoo/
+     \
+
+     Assuming \cb{foo} and \cb{libfoo} have been initialized in the default
+     build configuration, the following invocations illustrate the common
+     \cb{sync} use cases (the current working directory is shown before the
+     shell prompt).
+
+
+     Synchronize \cb{foo} and \cb{libfoo} with the default configuration:
+
+     \
+     prj/$ bdep sync
+     \
+
+     The same (all initialized packages in a project are always synchronized
+     at once):
+
+     \
+     prj/$ cd foo
+     foo/$ bdep sync
+     \
+
+     Add a dependency on \cb{libx} with \cb{sync} fetching and configuring a
+     suitable version:
+
+     \
+     foo/$ edit manifest  # Add 'depends: libx ^1.0.0'
+     foo/$ bdep sync
+     \
+
+     Upgrade all the immediate dependencies of \cb{foo}:
+
+     \
+     foo/$ bdep sync -u
+     \
+
+     Upgrade all the dependencies of all the initialized packages in a
+     project recursively:
+
+     \
+     foo/$ cd ../
+     prj/$ bdep sync -u -r
+     \
+
+     Upgrade \cb{libx} to the latest version:
+
+     \
+     prj/$ bdep sync libx
+     \
+
+     Upgrade \cb{libx} and its immediate dependencies to the latest version:
+
+     \
+     prj/$ bdep sync -u -i libx
+     \
+
+     Upgrade \cb{libx} to the latest patch version:
+
+     \
+     prj/$ bdep sync -p libx
+     \
+
+     Upgrade \cb{libx} and all its dependencies recursively to the latest patch
+     version.
+
+     \
+     prj/$ bdep sync -p -r libx
+     \
+
+     Upgrade \cb{libx} to version \cb{1.2.3}.
+
+     \
+     prj/$ bdep sync libx/1.2.3
+     \
+
+     Upgrade \cb{libx} to version \cb{1.2.3} and patch all its dependencies,
+     recursively:
+
+     \
+     prj/$ bdep sync -p -r libx/1.2.3
+     \
+
+     "
+  }
+
+  // Note that not all project/configuration options are valid for all
+  // subcommands.
+  //
+  class cmd_sync_options: project_options
+  {
+    "\h|SYNC OPTIONS|"
+
+    bool --upgrade|-u
+    {
+      "Upgrade dependencies to the latest available version that satisfies
+       all the constraints."
+    }
+
+    bool --patch|-p
+    {
+      "Upgrade dependencies to the latest available patch version that
+       satisfies all the constraints."
+    }
+
+    bool --immediate|-i
+    {
+      "Also upgrade or patch immediate dependencies."
+    }
+
+    bool --recursive|-r
+    {
+      "Also upgrade or patch all dependencies, recursively."
+    }
+
+    bool --yes|-y
+    {
+      "Don't prompt for confirmation when up/down-grading dependencies."
+    }
+
+    bool --disfigure
+    {
+      "Disfigure project packages during synchronization effectively causing
+       their from-scratch reconfiguration."
+    }
+
+    bool --fetch|-f
+    {
+      "Perform the \cb{fetch} command prior to synchronization."
+    }
+
+    bool --fetch-full|-F
+    {
+      "Perform the \cb{fetch --full} command prior to synchronization."
+    }
+
+    bool --sys-no-query
+    {
+      "Do not query the system package manager for the installed versions of
+       packages specified with the \cb{sys} scheme. See the corresponding
+       \l{bpkg-pkg-build(1)} option for details."
+    }
+
+    bool --sys-install
+    {
+      "Instruct the system package manager to install available versions of
+       packages specified with the \cb{sys} scheme that are not already
+       installed. See the corresponding \l{bpkg-pkg-build(1)} option for
+       details."
+    }
+
+    bool --sys-no-fetch
+    {
+      "Do not fetch the system package manager metadata before querying for
+       available versions of packages specified with the \cb{sys} scheme. See
+       the corresponding \l{bpkg-pkg-build(1)} option for details."
+    }
+
+    bool --sys-no-stub
+    {
+      "Do no require a stub for packages specified with the \cb{sys} scheme.
+       See the corresponding \l{bpkg-pkg-build(1)} option for details."
+    }
+
+    bool --sys-yes
+    {
+      "Assume the answer to the system package manager prompts is \cb{yes}.
+       See the corresponding \l{bpkg-pkg-build(1)} option for details."
+    }
+
+    string --sys-sudo = "sudo"
+    {
+      "<prog>",
+      "The \cb{sudo} program to use for system package manager interactions
+       that normally require administrative privileges (fetch package
+       metadata, install packages, etc). See the corresponding
+       \l{bpkg-pkg-build(1)} option for details."
+    }
+
+    bool --create-host-config
+    {
+      "Create a configuration for build-time dependencies without prompt."
+    }
+
+    bool --create-build2-config
+    {
+      "Create a configuration for build system module dependencies without
+       prompt."
+    }
+
+    bool --implicit
+    {
+      "Perform implicit synchronization. This mode is normally used by other
+       tools (for example, a build system hook) to ensure projects and
+       configurations are synchronized. To improve performance, especially for
+       the \"everything is already synchronized\" case, \cb{sync} executed in
+       this mode assumes that no configuration flags (see \l{bdep-config(1)})
+       have changed since the last explicit synchronization. It also does not
+       search for a project in the current working directory \- if any, its
+       directory should be specified explicitly with \c{\b{--config}|\b{-c}}."
+    }
+
+    // The build system hook protocol version. Internal, undocumented, and
+    // implies --implicit.
+    //
+    uint16_t --hook = 0;
+  };
+
+  // Options that can be specified in a group for ?<pkg> in pkg-args.
+  //
+  class cmd_sync_pkg_options
+  {
+    // Note that this is also used as storage for configuration names
+    // specified as @<name>.
+    //
+    vector<string> --config-name|-n;
+    vector<uint64_t> --config-id;
+    vector<dir_path> --config|-c;
+  };
+
+  "
+   \h|DEFAULT OPTIONS FILES|
+
+   See \l{bdep-default-options-files(1)} for an overview of the default
+   options files. For the \cb{sync} command the search start directory is the
+   project directory, except for the implicit mode for which only the
+   predefined directories (system, etc) are searched in. The following options
+   files are searched for in each directory and, if found, loaded in the order
+   listed:
+
+   \
+   bdep.options
+   bdep-{sync|sync-implicit}.options # (mode-dependent)
+   \
+
+   The following \cb{sync} command options cannot be specified in the
+   default options files:
+
+   \
+   --directory|-d
+   --implicit
+   --config|-c
+   \
+
+
+   \h|ENVIRONMENT|
+
+   The \cb{BDEP_SYNC} environment variable can be used to suppress automatic
+   synchronization on build system invocation. If set, auto-synchronization
+   will only be performed if the variable's value is \cb{true} or \cb{1}. The
+   ability to suppress auto-synchronization can be useful when you don't have
+   usable \cb{bdep} and/or \cb{bpkg}.
+
+   To avoid recursive re-synchronization, the \cb{sync} command also maintains
+   the \cb{BDEP_SYNCED_CONFIGS} environment variable. It contains a
+   space-separated, \cb{\"}-quoted list of configuration paths that have been
+   or are being synchronized by the current \cb{bdep} invocation chain. The
+   \cb{sync} command examines this variable and silently ignores
+   synchronization requests that have been or are already being performed.
+  "
+}

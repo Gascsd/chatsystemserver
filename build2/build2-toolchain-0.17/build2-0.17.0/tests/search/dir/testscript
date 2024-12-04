@@ -1,0 +1,48 @@
+# file      : tests/search/dir/testscript
+# license   : MIT; see accompanying LICENSE file
+
+test.arguments = 'update(../)'
+
+.include ../../common.testscript
+
+# foo/ has no buildfile
+# bar/ has valid buildfile
+# baz/ has invalid buildfile
+#
++mkdir foo bar baz
++cat <<EOI >=bar/buildfile
+print bar
+./:
+EOI
++cat <'assert false' >=baz/buildfile
+
+: no-buildfile
+:
+$* <'./: foo/' 2>>/EOE != 0
+error: no explicit target for ../:dir{foo/}
+EOE
+
+: basic
+:
+$* <'./: bar/' >'bar'
+
+: existing-scope
+:
+$* <<EOI >'bar'
+bar/ x = y
+./: bar/
+EOI
+
+: existing-target-implied
+:
+$* <<EOI >'bar'
+bar/: x = y
+./: bar/
+EOI
+
+: existing-target-real
+:
+$* <<EOI
+dir{baz/}:
+./: baz/
+EOI

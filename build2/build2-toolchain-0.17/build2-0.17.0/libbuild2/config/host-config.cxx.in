@@ -1,0 +1,16 @@
+// file      : libbuild2/config/host-config.cxx.in -*- C++ -*-
+// license   : MIT; see accompanying LICENSE file
+
+namespace build2
+{
+  namespace config
+  {
+    // This is a raw string literal, in case you are unfamiliar.
+    //
+    extern const char host_config[] = R"###($host_config$)###";
+    extern const char build2_config[] = R"###($build2_config$)###";
+
+    extern const char host_config_no_warnings[] = R"###($host_config_no_warnings$)###";
+    extern const char build2_config_no_warnings[] = R"###($build2_config_no_warnings$)###";
+  }
+}

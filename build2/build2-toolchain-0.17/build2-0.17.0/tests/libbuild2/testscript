@@ -1,0 +1,6 @@
+# file      : tests/libbuild2/testscript
+# license   : MIT; see accompanying LICENSE file
+
+: basic
+:
+$*

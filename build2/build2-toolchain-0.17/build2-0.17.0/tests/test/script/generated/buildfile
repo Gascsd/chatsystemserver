@@ -1,0 +1,7 @@
+# file      : tests/test/script/generated/buildfile
+# license   : MIT; see accompanying LICENSE file
+
+# Test generated testscripts.
+#
+
+./: testscript $b file{*.in}

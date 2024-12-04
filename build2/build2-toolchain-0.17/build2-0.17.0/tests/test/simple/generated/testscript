@@ -1,0 +1,249 @@
+# file      : tests/test/simple/generated/testscript
+# license   : MIT; see accompanying LICENSE file
+
+test.arguments = test clean
+
+.include ../../common.testscript
+
+# @@ in module
+#
++cat <<EOI >+build/bootstrap.build
+using version
+EOI
++cat <<EOI >=manifest
+: 1
+name: test
+version: 1.2.3
+EOI
+
+# This one is a bit tricky since we need an executable to run. We don't want
+# to be building anything as part of our test project so what we do is test
+# the directory target with an overridden test target (note that $src_root
+# here refers to the root of the project being tested).
+
+: input
+:
+ln -s $src_base/input.in ./;
+$* <<EOI
+driver = $src_root/../exe{driver}
+./: test = $driver
+./: $driver
+./: file{input}: test.input = true
+file{input}: in{input} $src_root/manifest #@@ in module
+EOI
+
+: output
+:
+ln -s $src_base/output.in ./;
+$* <<EOI
+driver = $src_root/../exe{driver}
+./: test = $driver
+./: $driver
+./: file{output}: test.stdout = true
+file{output}: in{output} $src_root/manifest #@@ in module
+EOI
+
+: output-mismatch
+:
+{
+  # Get rid of --serial-stop --quiet.
+  #
+  test.options = $regex.apply($test.options, '^(--serial-stop|--quiet)$', '')
+
+  : verbose-0
+  :
+  {
+    echo '1.2.3' >=input;
+    echo '3.4.5' >=output;
+    $* -q <<EOI 2>>/~%EOE% != 0
+    driver = $src_root/../exe{driver}
+    ./: test = $driver
+    ./: $driver
+    ./: test.arguments = '-'
+    ./: file{input}: test.stdin = true
+    ./: file{output}: test.stdout = true
+    EOI
+    %.+
+    -3.4.5
+    error: test dir{./} failed
+      error: process diff exited with code 1
+    EOE
+  }
+
+  : verbose-1
+  :
+  {
+    echo '1.2.3' >=input;
+    echo '3.4.5' >=output;
+    $* <<EOI 2>>/~%EOE% != 0
+    driver = $src_root/../exe{driver}
+    ./: test = $driver
+    ./: $driver
+    ./: test.arguments = '-'
+    ./: file{input}: test.stdin = true
+    ./: file{output}: test.stdout = true
+    EOI
+    test dir{./}
+    %.+
+    -3.4.5
+    error: test dir{./} failed
+      error: process diff exited with code 1
+    %  info: test command line: cat .+/input \| .+/driver.* - \| diff -u .+%
+      info: while testing dir{./}
+    info: failed to test dir{./}
+    EOE
+  }
+
+  : verbose-2
+  :
+  {
+    echo '1.2.3' >=input;
+    echo '3.4.5' >=output;
+    $* --verbose 2 <<EOI 2>>/~%EOE% != 0
+    driver = $src_root/../exe{driver}
+    ./: test = $driver
+    ./: $driver
+    ./: test.arguments = '-'
+    ./: file{input}: test.stdin = true
+    ./: file{output}: test.stdout = true
+    EOI
+    %cat .+/input \| .+/driver.* - \| diff -u .+%
+    %.+
+    -3.4.5
+    error: test dir{./} failed
+      error: process diff exited with code 1
+      info: while testing dir{./}
+    info: failed to test dir{./}
+    EOE
+  }
+
+  : verbose-3
+  :
+  {
+    echo '1.2.3' >=input;
+    echo '3.4.5' >=output;
+    $* --verbose 3 <<EOI 2>>/~%EOE% != 0
+    driver = $src_root/../exe{driver}
+    ./: test = $driver
+    ./: $driver
+    ./: test.arguments = '-'
+    ./: file{input}: test.stdin = true
+    ./: file{output}: test.stdout = true
+    EOI
+    %cat .+/input \| .+/driver.* - \| diff -u .+%
+    %.+
+    -3.4.5
+    %error: test .+dir\{.+\} failed%
+      error: process diff exited with code 1
+    %  info: while testing .+dir\{.+\}%
+    %info: failed to test .+dir\{.+\}%
+    EOE
+  }
+
+  : input-not-found
+  :
+  {
+    echo '1.2.3' >=input;
+    echo '3.4.5' >=output;
+    $* -q <<EOI 2>>/~%EOE% != 0
+    driver = $src_root/../exe{driver}
+    ./: test = $driver
+    ./: $driver
+    ./: test.arguments = 'foo'
+    ./: file{input}: test.stdin = true
+    ./: file{output}: test.stdout = true
+    EOI
+    unable to open foo
+    error: test dir{./} failed
+    %  error: process .+/driver.* exited with code 1%
+    EOE
+  }
+}
+
+: timeout
+:
+{
+  : operation
+  :
+  {
+    : no-output
+    :
+    ln -s $src_base/output.in ./;
+    $* config.test.timeout=1 <<EOI 2>>/~%EOE% != 0
+    driver = $src_root/../exe{driver}
+    ./: test = $driver
+    ./: test.options = -s
+    ./: $driver
+    EOI
+    error: test dir{./} failed
+    %  error: process .+driver.* terminated: execution timeout expired%
+    EOE
+
+    : stdin-stdout
+    :
+    ln -s $src_base/input.in ./;
+    ln -s $src_base/output.in ./;
+    $* config.test.timeout=1 --verbose 1 &input &input.d &output &output.d <<EOI 2>>/~%EOE% != 0
+    driver = $src_root/../exe{driver}
+    ./: test = $driver
+    ./: test.options = -s
+    ./: $driver
+    ./: file{input}: test.stdin = true
+    ./: file{output}: test.stdout = true
+    file{input}: in{input} $src_root/manifest #@@ in module
+    file{output}: in{output} $src_root/manifest #@@ in module
+    EOI
+    %version in\{.+\} -> .+%{2}
+    test dir{./}
+    error: test dir{./} failed
+    %  error: process .+driver.* terminated: execution timeout expired%
+    %  info: test command line: cat .+/input \| .+driver.* -s \| diff -u .+%
+      info: while testing dir{./}
+    info: failed to test dir{./}
+    EOE
+  }
+
+  : test
+  :
+  {
+    : no-output
+    :
+    ln -s $src_base/output.in ./;
+    $* config.test.timeout=/1 <<EOI 2>>/~%EOE% != 0
+    driver = $src_root/../exe{driver}
+    ./: test = $driver
+    ./: test.options = -s
+    ./: $driver
+    EOI
+    error: test dir{./} failed
+    %  error: process .+driver.* terminated: execution timeout expired%
+    EOE
+  }
+}
+
+: runner
+:
+if ($cxx.target.class != 'windows')
+{
+  cat <<EOI >=run;
+    #!/bin/sh
+    if test "$1" = "--trace"; then
+      shift
+      echo "tracing"
+    fi
+    "$@"
+    EOI
+
+  chmod u+x run;
+
+  echo 'tracing'          >=output.in;
+  cat $src_base/output.in >+output.in;
+
+  $* config.test.runner="./run --trace" <<EOI
+  driver = $src_root/../exe{driver}
+  ./: test = $driver
+  ./: $driver
+  ./: file{output}: test.stdout = true
+  file{output}: in{output} $src_root/manifest #@@ in module
+  EOI
+}

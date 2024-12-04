@@ -1,0 +1,82 @@
+# file      : tests/remote-git.testscript
+# license   : MIT; see accompanying LICENSE file
+
+# Tests for commands that accept git repository location must be able to run
+# regardless whether the repository is local or remote. They also must be able
+# to create the repository used for testing at the specified path, so being
+# published to build2.org it can be used for the remote testing. Note that
+# prior to publishing repositories tests must be performed with the
+# config.test.output=keep variable override, so their working directories (that
+# contain repositories produced) are not cleaned up.
+#
+
+# Check that git version is the minimum supported one (2.14.0) or above (see
+# bpkg/fetch-git.cxx for details).
+#
++git --version | set git_version_out
+
++echo "$git_version_out" | sed -n -e 's/git version (\d+\.\d+\.\d+).*/\1/p' | \
+ set git_version
+
++if ("$git_version" == "")
+  exit "unable to obtain git version from '$git_version_out'"
+end
+
++echo "$git_version" | sed -e 's/(\d+).*/\1/'      | set git_version_major
++echo "$git_version" | sed -e 's/\d+\.(\d+).*/\1/' | set git_version_minor
+
+# These flags must be used by testscripts to decide if they should skip git
+# repository-related tests.
+#
+git_supported = ($git_version_major >  2 || \
+                 $git_version_major == 2 && $git_version_minor >= 11)
+
+# Output directory path that testscripts must use to prepare repositories
+# required by tests they contain.
+#
+out_git = $canonicalize([dir_path] $~/git/$cmd)
+
++if! $remote
+  rep_git_local = ($cxx.target.class != 'windows' \
+                   ? "file://$out_git" \
+                   : "file:/$regex.replace($out_git, '\\', '/')")
+
+  rep_git_local = "$regex.replace($rep_git_local, ' ', '%20')"
+
+  rep_git = $rep_git_local # Default local repository URL.
+
+  mkdir -p $out_git
+else
+  rep_git_https_dumb        = "https://build2.org/bpkg/git/$cmd"
+  rep_git_https_smart       = "https://git.build2.org/testing/bpkg/advonly/$cmd"
+  rep_git_https_smart_unadv = "https://git.build2.org/testing/bpkg/unadv/$cmd"
+  rep_git_git               = "git://git.build2.org/testing/bpkg/advonly/$cmd"
+  rep_git_ssh               = "ssh://git.build2.org/var/scm/testing/bpkg/advonly/$cmd"
+
+  # Note that we assume the git and ssh protocols as smart and never as unadv
+  # (see fetch-git.cxx for details). However, git may behave differently
+  # depending on the server setup (due to bugs, etc). That's why we test
+  # against different server configurations to make sure that nothing falls
+  # apart.
+  #
+  rep_git_git_unadv         = "git://git.build2.org/testing/bpkg/unadv/$cmd"
+  rep_git_ssh_unadv         = "ssh://git.build2.org/var/scm/testing/bpkg/unadv/$cmd"
+
+  rep_git = $rep_git_https_dumb # Default remote repository URL.
+end
+
+# Command for extracting the git repository from a tarball into the output
+# directory (see above). Note: should only be used for .tar, not .tar.gz.
+#
+# Note that we can expect that the tar program is present on the platform. We
+# will use the same options as we do for unpacking of package archives (see
+# pkg-unpack.cxx).
+#
+# Note that on Windows we still use tar rather than bsdtar here, since the
+# later fails for dangling symlinks and we have such symlinks in the
+# repository archives which are used for testing.
+#
+git_extract = [cmdline] \
+              ($cxx.target.class != 'windows' \
+               ? tar -C $out_git -xf \
+               : tar -C $regex.replace($out_git, '\\', '/') --force-local -xf)

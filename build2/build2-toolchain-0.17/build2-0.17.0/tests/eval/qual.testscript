@@ -1,0 +1,28 @@
+# file      : tests/eval/qual.testscript
+# license   : MIT; see accompanying LICENSE file
+
+# Test qualified name (eval-qual).
+
+.include ../common.testscript
+
+$* <'print (file{foo}:    bar)' >'bar:file{foo}'    : target
+$* <'print (file{foo}@./: bar)' >'bar:file{foo}@./' : target-out
+$* <'print (foo/dir{}:    bar)' >'bar:dir{foo/}'    : target-dir
+
+: attribute
+:
+$* <'([string] foo:bar)' 2>>EOE != 0
+<stdin>:1:2: error: attributes before target-qualified variable name
+EOE
+
+: leader
+:
+$* <'(foo == foo:bar)' 2>>EOE != 0
+<stdin>:1:12: error: unexpected ':'
+EOE
+
+: trailer
+:
+$* <'(foo:bar == foo)' 2>>EOE != 0
+<stdin>:1:10: error: expected ')' after variable name
+EOE

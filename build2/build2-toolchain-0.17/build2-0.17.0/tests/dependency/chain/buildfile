@@ -1,0 +1,4 @@
+# file      : tests/dependency/chain/buildfile
+# license   : MIT; see accompanying LICENSE file
+
+./: testscript $b

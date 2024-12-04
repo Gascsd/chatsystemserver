@@ -1,0 +1,39 @@
+# file      : tests/directive/run.testscript
+# license   : MIT; see accompanying LICENSE file
+
+# We are going to run the build system driver so no cross-testing.
+#
+crosstest = false
+
+.include ../common.testscript
+
+run = "run '$0' --no-default-options noop"
+
+: no-output
+:
+cat <'assert true' >=buildfile;
+$* <"$run"
+
+: output
+:
+cat <'print foo=bar' >=buildfile;
+$* <<"EOI" >'bar'
+$run
+print \$foo
+EOI
+
+: bad-exit
+:
+cat <'assert false' >=buildfile;
+$* <"$run" 2>>~/EOE/ != 0
+buildfile:1:1: error: assertion failed
+/<stdin>:1:5: error: process .+ exited with code 1/
+EOE
+
+: bad-output
+:
+cat <'print run' >=buildfile;
+$* <"$run" 2>>"EOE" != 0
+<stdout>:1:4: error: expected executable name after run
+  <stdin>:1:5: info: while parsing $0 output
+EOE

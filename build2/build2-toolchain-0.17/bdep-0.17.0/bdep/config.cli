@@ -1,0 +1,275 @@
+// file      : bdep/config.cli
+// license   : MIT; see accompanying LICENSE file
+
+include <bdep/project.cli>;
+
+"\section=1"
+"\name=bdep-config"
+"\summary=manage project build configurations"
+
+namespace bdep
+{
+  {
+    "<options>
+     <cfg-spec> <cfg-name> <cfg-dir>
+     <prj-spec> <prj-dir>
+     <cfg-args> <bpkg-options> <module> <cfg-var>",
+
+    "\h|SYNOPSIS|
+
+     \c{\b{bdep config add} \ \ \ [<options>] [<prj-spec>] [\b{@}<cfg-name>] <cfg-dir>\n
+        \b{bdep config create} [<options>] [<prj-spec>] [\b{@}<cfg-name>] <cfg-dir> [<cfg-args>]\n
+        \b{bdep config link} \ \ [<options>] [<prj-spec>] <cfg-spec> <cfg-spec>\n
+        \b{bdep config unlink} [<options>] [<prj-spec>] <cfg-spec> <cfg-spec>\n
+        \b{bdep config list} \ \ [<options>] [<prj-spec>] [<cfg-spec>...]\n
+        \b{bdep config move} \ \ [<options>] [<prj-spec>] <cfg-spec> <cfg-dir>\n
+        \b{bdep config rename} [<options>] [<prj-spec>] <cfg-spec> <cfg-name>\n
+        \b{bdep config remove} [<options>] [<prj-spec>] <cfg-spec>... | \b{--all}|\b{-a}\n
+        \b{bdep config set} \ \ \ [<options>] [<prj-spec>] <cfg-spec>... | \b{--all}|\b{-a}\n
+        \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ [\b{--}[\b{no-}]\b{default}]\n
+        \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ [\b{--}[\b{no-}]\b{forward}]\n
+        \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ [\b{--}[\b{no-}]\b{auto-sync}]}
+
+     \c{<cfg-spec> = \b{@}<cfg-name> | \b{--config}|\b{-c} <cfg-dir>\n
+        <prj-spec> = \b{--directory}|\b{-d} <prj-dir>\n
+        <cfg-args> = [\b{--} [<bpkg-options>]] [\b{--existing}|\b{-e} | (<module> | <cfg-var>)...]}
+
+     \h|DESCRIPTION|
+
+     The \cb{config} command provides the following subcommands for managing
+     project's build configurations. If no project directory is specified,
+     then the current working directory is assumed."
+  }
+
+  class cmd_config_subcommands
+  {
+    "\h|CONFIG SUBCOMMANDS|
+
+     \dl|
+
+     \li|\cb{add}
+
+        |
+
+     \li|\cb{create}
+
+         The \cb{add} subcommand adds an existing \l{bpkg(1)} build
+         configuration in directory \ci{cfg-dir} to the project's build
+         configuration set. The \cb{create} subcommand creates a new
+         configuration in directory \ci{cfg-dir} by executing the
+         \l{bpkg-cfg-create(1)} command and passing to it \ci{cfg-args}, if
+         any. It then proceeds as \cb{add} by adding the new configuration to
+         the project's build configuration set.
+
+         In both subcommands, if \ci{cfg-name} is specified, then the added
+         configuration is given this name. Several \cb{bdep} commands can use
+         such names as a more convenient way to specify build configurations
+         (see \l{bdep-projects-configs(1)} for details).
+
+         As a shortcut, if \ci{cfg-name} is not specified and \ci{cfg-dir} is
+         a simple path that starts with \cb{@}, then it is treated as the name
+         and the configuration directory is assumed to be
+         \c{\i{prj-dir}\b{-}\i{cfg-name}}. Note that in case of \c{create},
+         \ci{cfg-dir} must be preceded with \cb{--} (double dash) option to
+         disambiguate it from \c{\b{@}\i{cfg-name}}. For example, assuming
+         the project directory is \cb{hello}:
+
+         \
+         $ bdep config add @clang                        # ../hello-clang
+         $ bdep config create -- @gcc cc config.cxx=g++  # ../hello-gcc
+         \
+
+         A configuration also has a type that is specified with the
+         \cb{--type} option (or \cb{--config-type} from \l{bdep-new(1)}).
+         If the type is not specified explicitly, then \cb{target} is
+         assumed. See \l{bpkg-cfg-create(1)} for background on configuration
+         types.
+
+         Unless the \cb{--no-default} option is specified, the first added or
+         created build configuration of each type is designated as the
+         default. Several \cb{bdep} commands use such a configuration by
+         default if no configuration was specified explicitly (see
+         \l{bdep-projects-configs(1)} for details). To make a subsequently
+         added configuration the default use the \cb{--default} option. Note
+         also that in case of multiple default configurations any given
+         package within a project can only be initialized in one such
+         configuration.
+
+         The default build configuration of each type is also designated as
+         forwarded unless the \cb{--no-forward} option is specified or another
+         configuration of this type is already designated as forwarded. When a
+         project is initialized in a forwarded build configuration, its source
+         directory is configured to forward to this configuration (see
+         \l{b(1)} for details on forwarded configurations). To designate a
+         non-default configuration as forwarded use the \cb{--forward}
+         option. Note also that it is possible to have multiple forwarded
+         configurations, however, any given package within a project can only
+         be initialized in one such configuration.
+
+         Unless the \cb{--no-auto-sync} option is specified, an added or
+         created build configuration will be automatically synchronized on
+         every build system invocation. Note that this flag affects the entire
+         build configuration and if multiple projects share the same
+         configuration, then they must have a consistent auto-synchronization
+         setting.|
+
+     \li|\cb{link}
+
+         The \cb{link} subcommand links the first specified build
+         configuration with the second by executing the \l{bpkg-cfg-link(1)}
+         command. See \l{bpkg-cfg-create(1)} for background on linked
+         configurations.|
+
+     \li|\cb{unlink}
+
+         The \cb{unlink} subcommand unlinks the first specified build
+         configuration from the second by executing the \l{bpkg-cfg-unlink(1)}
+         command. See \l{bpkg-cfg-create(1)} for background on linked
+         configurations.|
+
+     \li|\cb{list}
+
+         The \cb{list} subcommand prints the list of build configurations
+         associated with the project. Unless one or more configurations are
+         specified explicitly, \cb{list} prints all the associate
+         configurations. Note that the output is written to \cb{stdout}, not
+         \cb{stderr}.
+
+         If the output format is \cb{json} (see the \cb{--stdout-format}
+         common option), then the output is a JSON array of objects which are
+         the serialized representation of the following C++ \cb{struct}
+         \cb{configuration}:
+
+         \
+         struct package
+         {
+           string name;
+         };
+
+         struct configuration
+         {
+           uint64_t         id;
+           string           path;
+           optional<string> name;
+           string           type;
+           bool             default;
+           bool             forward;
+           bool             auto_sync;
+           vector<package>  packages;
+         };
+         \
+
+         For example:
+
+         \
+         [
+           {
+             \"id\": 1,
+             \"path\": \"/tmp/hello-gcc\",
+             \"name\": \"gcc\",
+             \"type\": \"target\",
+             \"default\": true,
+             \"forward\": true,
+             \"auto_sync\": true,
+             \"packages\": [
+               {
+                 \"name\": \"hello\"
+               }
+             ]
+           }
+         ]
+         \
+
+         See the JSON OUTPUT section in \l{bdep-common-options(1)} for details
+         on the overall properties of this format and the semantics of the
+         \cb{struct} serialization.
+
+         The \cb{id} member is a numeric configuration id that can be used to
+         identify the configuration instead of the name or path (see the
+         \cb{--config-id} option). The \cb{path} member is an absolute path to
+         the configuration directory. The \cb{packages} member contains the
+         array of packages belonging to this project that have been
+         initialized in this configuration. See the \cb{create} subcommand for
+         the meaning of other members (\cb{name}, \cb{type}, \cb{default},
+         etc).|
+
+     \li|\cb{move}
+
+         The \cb{move} subcommand assigns the specified build configuration a
+         new directory. It is normally used after moving/renaming the
+         configuration directory. Note that an explicit \l{bdep-sync(1)}
+         command is required for this change to take effect. See
+         \l{bdep-projects-configs(1)} for various ways to specify a build
+         configuration.|
+
+     \li|\cb{rename}
+
+         The \cb{rename} subcommand gives the specified build configuration a
+         new name. See \l{bdep-projects-configs(1)} for various ways to
+         specify a build configuration.|
+
+     \li|\cb{remove}
+
+         The \cb{remove} subcommand removes one or more build configurations
+         from the project's build configuration set. Note that only
+         configurations that have no initialized packages can be removed. See
+         \l{bdep-projects-configs(1)} for various ways to specify build
+         configurations.|
+
+     \li|\cb{set}
+
+         The \cb{set} subcommand modifies various properties of one or more
+         build configurations associated with the project. See
+         \l{bdep-projects-configs(1)} for various ways to specify build
+         configurations.
+
+         The properties that can be modified include the default
+         (\c{\b{--}[\b{no-}]\b{default}}), forward
+         (\c{\b{--}[\b{no-}]\b{forward}}), and auto-synchronization
+         (\c{\b{--}[\b{no-}]\b{auto-sync}}) flags. Note that changing any of
+         these flags requires an explicit \l{bdep-sync(1)} command to take
+         effect.||"
+
+    bool add;
+    bool create;
+    bool link;
+    bool unlink;
+    bool list;
+    bool move;
+    bool rename;
+    bool remove;
+    bool set;
+  };
+
+  // Note that not all project/configuration options are valid for all
+  // subcommands.
+  //
+  class cmd_config_options: configuration_add_options, project_options
+  {
+    "\h|CONFIG OPTIONS|"
+  };
+
+  "
+   \h|DEFAULT OPTIONS FILES|
+
+   See \l{bdep-default-options-files(1)} for an overview of the default
+   options files. For the \cb{config} command the search start directory is
+   the project directory. The following options files are searched for in
+   each directory and, if found, loaded in the order listed:
+
+   \
+   bdep.options
+   bdep-config.options
+   bdep-config-add.options          # if the create subcommand
+   bdep-config-<subcommand>.options # (subcommand-dependent)
+   \
+
+   The following \cb{config} command options cannot be specified in the
+   default options files:
+
+   \
+   --directory|-d
+   --wipe
+   \
+  "
+}

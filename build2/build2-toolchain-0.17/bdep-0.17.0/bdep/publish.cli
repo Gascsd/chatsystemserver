@@ -1,0 +1,191 @@
+// file      : bdep/publish.cli
+// license   : MIT; see accompanying LICENSE file
+
+include <set>;
+
+include <bdep/project.cli>;
+
+"\section=1"
+"\name=bdep-publish"
+"\summary=publish project to archive repository"
+
+namespace bdep
+{
+  {
+    "<options>
+     <prj-spec> <prj-dir>
+     <pkg-spec> <pkg-dir>
+     <cfg-spec> <cfg-name> <cfg-dir>",
+
+    "\h|SYNOPSIS|
+
+     \c{\b{bdep publish} [<options>] [<cfg-spec>] [<pkg-spec>]}
+
+     \c{<pkg-spec> = (\b{--directory}|\b{-d} <pkg-dir>)... | <prj-spec>\n
+        <prj-spec> = \b{--directory}|\b{-d} <prj-dir>\n
+        <cfg-spec> = (\b{@}<cfg-name> | \b{--config}|\b{-c} <cfg-dir>)... | \b{--all}|\b{-a} | \b{--forward}}
+
+     \h|DESCRIPTION|
+
+     The \cb{publish} command publishes the project packages to an
+     archive-based repository.
+
+     If no project or package directory is specified, then the current working
+     directory is assumed. If no configuration is specified, then the default
+     configurations are used to prepare the package distributions. If the
+     specified directory is a project directory, then all the packages in the
+     project are published. See \l{bdep-projects-configs(1)} for details on
+     specifying projects and configurations.
+
+     For each specified package the \cb{publish} command prepares a package
+     archive and sends it as part of the package submission request to an
+     archive-based repository. If the repository is not explicitly specified
+     with the \cb{--repository} option, packages are published to
+     \cb{cppget.org} by default.
+
+     Along with the package archive, the submission request specifies the
+     repository section to publish the package under, the control repository
+     URL to use for authorization, and the publisher's name and email address
+     for the record. While the exact usage and interpretation of this
+     information depends on the specific repository, the following semantics
+     apply when submitting to \cb{cppget.org}.
+
+     The section specifies the desired repository section to publish the
+     project under. If not explicitly specified with the \cb{--section}
+     option, one of the \cb{alpha}, \cb{beta}, or \cb{stable} values are
+     automatically derived from the package version.
+
+     The control repository URL is a publicly accessible, read-only URL to a
+     version control repository (normally the same as the project's) that is
+     used to authenticate the publisher as someone authorized to publish under
+     this package name (currently only \cb{git(1)} is supported).
+
+     Prior to sending the submission request, the \cb{publish} command adds
+     the package archive checksum to the \cb{build2-control} branch of the
+     project's version control repository. Upon receiving the submission
+     request, the archive repository either (1) associates the control
+     repository with the package name if this is the first time this package
+     name is published or (2) compares the submitted control repository to the
+     previously associated and, if matching, queries the \cb{build2-control}
+     branch to verify that the submitter is authorized to publish this archive
+     under this package name.
+
+     Unless the control repository URL is specified with the \cb{--control}
+     option, it will be automatically derived from the version control's
+     \"remote\" URL. In case of \cb{git(1)}, it will be based on the
+     \cb{remote.origin.url} configuration value unless overridden with
+     \cb{remote.origin.build2ControlUrl} or \cb{remote.origin.build2Url}. The
+     special \cb{none} value to the \cb{--control} option can be used to
+     disable this functionality.
+
+     See \l{brep#submit Package Submission} for details on the submission
+     request handling by archive repositories.
+
+     If the \cb{--forward} option is specified then the forwarded
+     configurations are used to prepare the package distributions. In
+     particular, this means that in this mode the project doesn't need to be
+     initialized and all that's required is for package's source directories
+     to be configured to forward to an out of source build configuration (see
+     \l{b(1)} for details on forwarded configurations). This, for example, can
+     be used to publish packages that don't use the standard version.
+     "
+  }
+
+  class cmd_publish_options: project_options
+  {
+    "\h|PUBLISH OPTIONS|"
+
+    bool --yes|-y
+    {
+      "Don't prompt for confirmation before publishing."
+    }
+
+    string --control
+    {
+      "<url>",
+      "Control repository URL for the packages being published."
+    }
+
+    url --repository = "https://cppget.org"
+    {
+      "<url>",
+      "Repository to publish the packages to."
+    }
+
+    string --section
+    {
+      "<name>",
+      "Repository section to publish the packages under."
+    }
+
+    string --author-name
+    {
+      "<name>",
+      "Publisher's name. If unspecified, it will be obtained from the
+       environment and/or version control system. See the ENVIRONMENT
+       section for details."
+    }
+
+    string --author-email
+    {
+      "<email>",
+      "Publisher's email address. If unspecified, it will be obtained from the
+       environment and/or version control system. See the ENVIRONMENT section
+       for details."
+    }
+
+    std::set<string> --force
+    {
+      "<check>",
+      "Force publishing, disabling the specified check. Repeat this option to
+       disable multiple checks."
+    }
+
+    string --simulate
+    {
+      "<outcome>",
+      "Simulate the specified outcome of the submission process without
+       actually performing any externally visible actions (such as publishing
+       the package). The commonly used outcome value is \cb{success}. For
+       other recognized outcomes refer to the submission service
+       documentation."
+    }
+
+    bool --forward
+    {
+      "Use the forwarded configuration for each package instead of the
+       default configuration."
+    }
+  };
+
+  "
+   \h|DEFAULT OPTIONS FILES|
+
+   See \l{bdep-default-options-files(1)} for an overview of the default
+   options files. For the \cb{publish} command the search start directory is
+   the project directory. The following options files are searched for in
+   each directory and, if found, loaded in the order listed:
+
+   \
+   bdep.options
+   bdep-publish.options
+   \
+
+   The following \cb{publish} command options cannot be specified in the
+   default options files:
+
+   \
+   --directory|-d
+   \
+
+
+   \h|ENVIRONMENT|
+
+   The \cb{BDEP_AUTHOR_NAME} and \cb{BDEP_AUTHOR_EMAIL} environment variables
+   can be used to specify the publisher's name and email address,
+   respectively. If not set, the \cb{publish} command will first try to obtain
+   the name and email from the version control system (if used) and then from
+   the \cb{USER} and \cb{EMAIL} environment variables, respectively. See also
+   the \cb{--author-name} and \cb{--author-email} options.
+  "
+}

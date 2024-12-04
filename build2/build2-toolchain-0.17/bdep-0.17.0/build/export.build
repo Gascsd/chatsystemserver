@@ -1,0 +1,9 @@
+# file      : build/export.build
+# license   : MIT; see accompanying LICENSE file
+
+$out_root/
+{
+  include bdep/
+}
+
+export $out_root/bdep/exe{bdep}

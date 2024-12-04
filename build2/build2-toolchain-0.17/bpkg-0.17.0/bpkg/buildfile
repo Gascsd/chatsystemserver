@@ -1,0 +1,264 @@
+# file      : bpkg/buildfile
+# license   : MIT; see accompanying LICENSE file
+
+# @@ ODB: these are ODB changelogs that are both generated and stored in the
+#         repository (what if src != out?). Will need to think how to handle
+#         them properly (always generate in src_base?).
+#
+define xml: file
+xml{*}: extension = xml
+
+import libs = build2%lib{build2}
+
+# NOTE: see also module loading in bpkg.cxx if adding anything here.
+#
+for m: bash bin c cc cli cxx in version
+  import libs += build2%lib{build2-$m}
+
+# @@ TMP we require libsqlite3 to be interface dependency of libbut-odb only
+#    for the database migrations to schema versions 13 and 14.
+#
+import libs += libbpkg%lib{bpkg}
+import libs += libbutl%lib{butl}
+import libs += libbutl%lib{butl-odb}
+
+options_topics =           \
+bpkg-options               \
+cfg-create-options         \
+cfg-info-options           \
+cfg-link-options           \
+cfg-unlink-options         \
+common-options             \
+configuration-options      \
+help-options               \
+pkg-bindist-options        \
+pkg-build-options          \
+pkg-checkout-options       \
+pkg-clean-options          \
+pkg-configure-options      \
+pkg-disfigure-options      \
+pkg-drop-options           \
+pkg-fetch-options          \
+pkg-install-options        \
+pkg-purge-options          \
+pkg-test-options           \
+pkg-status-options         \
+pkg-uninstall-options      \
+pkg-unpack-options         \
+pkg-update-options         \
+pkg-verify-options         \
+rep-add-options            \
+rep-create-options         \
+rep-fetch-options          \
+rep-info-options           \
+rep-list-options           \
+rep-remove-options
+
+help_topics = repository-signing    \
+              repository-types      \
+              argument-grouping     \
+              default-options-files
+
+./: exe{bpkg}: {hxx ixx txx cxx}{+bpkg} libue{bpkg}
+
+libue{bpkg}: {hxx ixx txx cxx}{** -bpkg              \
+                                  -{$options_topics} \
+                                  -{$help_topics}    \
+                                  -*-odb             \
+                                  -version           \
+                                  -**.test...}       \
+             {hxx ixx cxx}{$options_topics}          \
+             {hxx cxx}{$help_topics}                 \
+             {hxx ixx cxx}{package-odb}              \
+             {hxx}{version}                          \
+             $libs                                   \
+             xml{*}
+
+hxx{version}: in{version} $src_root/manifest
+
+# Unit tests.
+#
+exe{*.test}:
+{
+  test = true
+  install = false
+}
+
+for t: cxx{**.test...}
+{
+  d = $directory($t)
+  n = $name($t)...
+
+  ./: $d/exe{$n}: $t $d/{hxx ixx txx}{+$n} $d/testscript{+$n}
+  $d/exe{$n}: libue{bpkg}: bin.whole = false
+}
+
+# Build options.
+#
+
+#cxx.poptions += -DBPKG_OUTPROC_CONFIGURE
+
+obj{utility}: cxx.poptions += \
+"-DBPKG_EXE_PREFIX=\"$bin.exe.prefix\"" \
+"-DBPKG_EXE_SUFFIX=\"$bin.exe.suffix\"" \
+"-DBPKG_HOST_TRIPLET=\"$cxx.target\""
+
+# Pass the copyright notice extracted from the LICENSE file.
+#
+copyright = $process.run_regex(                                 \
+  cat $src_root/LICENSE,                                        \
+  'Copyright \(c\) (.+) \(see the AUTHORS and LEGAL files\)\.', \
+  '\1')
+
+obj{bpkg}: cxx.poptions += "-DBPKG_COPYRIGHT=\"$copyright\""
+
+# Disable "unknown pragma" warnings.
+#
+switch $cxx.class
+{
+  case 'msvc'
+    cxx.coptions += /wd4068
+
+  case 'gcc'
+    cxx.coptions += -Wno-unknown-pragmas
+}
+
+# VC14 has issues with decorating long names.
+#
+if ($cxx.id == 'msvc' && $cxx.version.major == 19 && $cxx.version.minor < 10)
+  cxx.coptions += /wd4503
+
+# Similar option to the build system driver.
+#
+switch $cxx.target.class
+{
+  case 'linux'
+  {
+    # Make sure backtrace includes function names.
+    #
+    if ($cc.stdlib == 'glibc')
+      cxx.loptions += -rdynamic
+
+    # Make sure we use RPATH and not RUNPATH since the latter messes up
+    # dlopen().
+    #
+    cxx.loptions += -Wl,--disable-new-dtags
+  }
+  case 'windows'
+  {
+    # Adjust stack size (affects all threads).
+    #
+    #                                                8M        4M
+    stack_size = ($cxx.target.cpu == "x86_64" ? 8388608 : 4194304)
+
+    cxx.loptions += ($cxx.target.system == 'win32-msvc' \
+                     ? "/STACK:$stack_size"             \
+                     : "-Wl,--stack,$stack_size")
+  }
+}
+
+# Generated options parser.
+#
+if $cli.configured
+{
+  # General topics and common options.
+  #
+  cli.cxx{common-options}:        cli{common}
+  cli.cxx{configuration-options}: cli{configuration}
+  cli.cxx{bpkg-options}:          cli{bpkg}
+
+  # Help command.
+  #
+  cli.cxx{help-options}: cli{help}
+
+  # pkg-* command.
+  #
+  cli.cxx{pkg-bindist-options}:   cli{pkg-bindist}
+  cli.cxx{pkg-build-options}:     cli{pkg-build}
+  cli.cxx{pkg-checkout-options}:  cli{pkg-checkout}
+  cli.cxx{pkg-clean-options}:     cli{pkg-clean}
+  cli.cxx{pkg-configure-options}: cli{pkg-configure}
+  cli.cxx{pkg-disfigure-options}: cli{pkg-disfigure}
+  cli.cxx{pkg-drop-options}:      cli{pkg-drop}
+  cli.cxx{pkg-fetch-options}:     cli{pkg-fetch}
+  cli.cxx{pkg-install-options}:   cli{pkg-install}
+  cli.cxx{pkg-purge-options}:     cli{pkg-purge}
+  cli.cxx{pkg-test-options}:      cli{pkg-test}
+  cli.cxx{pkg-status-options}:    cli{pkg-status}
+  cli.cxx{pkg-uninstall-options}: cli{pkg-uninstall}
+  cli.cxx{pkg-unpack-options}:    cli{pkg-unpack}
+  cli.cxx{pkg-update-options}:    cli{pkg-update}
+  cli.cxx{pkg-verify-options}:    cli{pkg-verify}
+
+  # cfg-* command.
+  #
+  cli.cxx{cfg-create-options}: cli{cfg-create}
+  cli.cxx{cfg-info-options}:   cli{cfg-info}
+  cli.cxx{cfg-link-options}:   cli{cfg-link}
+  cli.cxx{cfg-unlink-options}: cli{cfg-unlink}
+
+  # rep-* command.
+  #
+  cli.cxx{rep-add-options}:    cli{rep-add}
+  cli.cxx{rep-create-options}: cli{rep-create}
+  cli.cxx{rep-fetch-options}:  cli{rep-fetch}
+  cli.cxx{rep-info-options}:   cli{rep-info}
+  cli.cxx{rep-list-options}:   cli{rep-list}
+  cli.cxx{rep-remove-options}: cli{rep-remove}
+
+  # Help topics.
+  #
+  cli.cxx{repository-signing}:    cli{repository-signing}
+  cli.cxx{repository-types}:      cli{repository-types}
+  cli.cxx{argument-grouping}:     cli{argument-grouping}
+  cli.cxx{default-options-files}: cli{default-options-files}
+
+  # Option length must be the same to get commands/topics/options aligned.
+  #
+  # Need global --suppress-undocumented because of few undocumented options
+  # in common.cli.
+  #
+  #
+  cli.options += --std c++11 -I $src_root --include-with-brackets \
+--include-prefix bpkg --guard-prefix BPKG \
+--cxx-prologue "#include <bpkg/types-parsers.hxx>" --cli-namespace bpkg::cli \
+--generate-vector-scanner --generate-file-scanner --generate-group-scanner \
+--keep-separator --generate-specifier --generate-parse --generate-merge \
+--page-usage 'bpkg::print_$name$_' --ansi-color --ascii-tree \
+--include-base-last --suppress-undocumented --option-length 25
+
+  # Both --*-usage options.
+  #
+  cli.cxx{common-options}: cli.options += --short-usage --long-usage \
+--generate-modifier
+
+  cli.cxx{bpkg-options}: cli.options += --short-usage
+
+  cli.options += --long-usage # All other pages -- long usage.
+
+  cli.cxx{pkg-build-options}: cli.options += --generate-modifier \
+--class-doc bpkg::pkg_build_pkg_options=exclude-base
+
+  cli.cxx{pkg-bindist-options}: cli.options += \
+--class-doc bpkg::pkg_bindist_common_options=exclude-base \
+--class-doc bpkg::pkg_bindist_debian_options=exclude-base \
+--class-doc bpkg::pkg_bindist_fedora_options=exclude-base \
+--class-doc bpkg::pkg_bindist_archive_options=exclude-base \
+--omit-link-check --link-regex '%#.+%%'
+
+  # Avoid generating CLI runtime and empty inline file for help topics.
+  #
+  cli.cxx{repository-signing repository-types argument-grouping \
+          default-options-files}:                               \
+    cli.options += --suppress-cli --suppress-inline
+
+  # Include the generated cli files into the distribution and don't remove
+  # them when cleaning in src (so that clean results in a state identical to
+  # distributed).
+  #
+  cli.cxx{*}:
+  {
+    dist  = true
+    clean = ($src_root != $out_root)
+  }
+}

@@ -1,0 +1,87 @@
+# file      : tests/test/script/integration/testscript
+# license   : MIT; see accompanying LICENSE file
+
+# Note: using common.testscript from test/, not script/.
+#
+.include ../../common.testscript
+
+: script-files
+:
+{
+  +touch testscript foo.testscript bar.testscript
+
+  : testscript-and-other
+  :
+  $* <<EOI 2>>/EOE != 0
+  ./: ../testscript testscript{../foo}
+  EOI
+  error: both 'testscript' and other names specified for dir{./}
+  EOE
+
+  : other-and-testscript
+  :
+  $* <<EOI 2>>/EOE != 0
+  ./: testscript{../foo} ../testscript
+  EOI
+  error: both 'testscript' and other names specified for dir{./}
+  EOE
+
+  : others
+  :
+  $* <<EOI
+  ./: testscript{../foo ../bar}
+  EOI
+}
+
+: wd-is-file
+:
+: Note that here we can not use portable path modifier as not all slashes are
+: path separators.
+:
+touch foo.testscript;
+touch test;
+$* <<EOI 2>>~%EOE% != 0
+./: testscript{foo}
+EOI
+%error: working directory test[/\\] is a file/symlink%
+EOE
+
+: wd-exists-before
+:
+touch foo.testscript;
+mkdir --no-cleanup test;
+touch --no-cleanup test/.buildignore;
+$* <<EOI 2>>/EOE
+./: testscript{foo}
+EOI
+warning: working directory test/ exists at the beginning of the test
+EOE
+
+: wd-not-empty-before
+:
+touch foo.testscript;
+mkdir --no-cleanup test;
+touch --no-cleanup test/.buildignore;
+touch --no-cleanup test/dummy;
+$* <<EOI 2>>/EOE
+./: testscript{foo}
+EOI
+warning: working directory test/ exists and is not empty at the beginning of the test
+EOE
+
+: wd-not-empty-after
+:
+: The idea here is to run a nested testscript that creates (but does not
+: clean up) a file in our working directory. Note that an implicit cleanup
+: cancelation is not required as the file is out of the test root directory
+: scope. Also note that we still have to remove everything after detecting the
+: failure.
+:
+cat <<EOI >=foo.testscript;
+touch ../../dummy
+EOI
+$* <<EOI 2>>/EOE &test/*** != 0
+./: testscript{foo}
+EOI
+error: working directory test/ is not empty at the end of the test
+EOE

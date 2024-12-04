@@ -1,0 +1,106 @@
+# file      : libbuild2/cc/buildfile
+# license   : MIT; see accompanying LICENSE file
+
+# NOTE: shared imports should go into root.build.
+#
+include ../
+impl_libs = ../lib{build2} # Implied interface dependency.
+
+libpkgconf = $config.build2.libpkgconf
+
+if $libpkgconf
+  import impl_libs += libpkgconf%lib{pkgconf}
+else
+  import impl_libs += libbutl%lib{butl-pkg-config}
+
+include ../bin/
+intf_libs = ../bin/lib{build2-bin}
+
+./: lib{build2-cc}: libul{build2-cc}:               \
+  {hxx ixx txx cxx}{** -pkgconfig-lib* -**.test...} \
+  h{msvc-setup}
+
+libul{build2-cc}: cxx{pkgconfig-libpkgconf}: include = $libpkgconf
+libul{build2-cc}: cxx{pkgconfig-libpkg-config}: include = (!$libpkgconf)
+
+libul{build2-cc}: $intf_libs $impl_libs
+
+# libc++ std module interface translation units.
+#
+# Hopefully temporary, see llvm-project GH issues #73089.
+#
+# @@ TMP: make sure sync'ed with upstream before release (keep this note).
+#
+lib{build2-cc}: file{std.cppm std.compat.cppm}
+file{std.cppm}@./ file{std.compat.cppm}@./: install = data/libbuild2/cc/
+
+# Unit tests.
+#
+exe{*.test}:
+{
+  test = true
+  install = false
+}
+
+for t: cxx{**.test...}
+{
+  d = $directory($t)
+  n = $name($t)...
+  b = $path.base($name($t))
+
+  ./: $d/exe{$n}: $t $d/{hxx ixx txx}{+$n} $d/testscript{+$n +$b+*.test...}
+  $d/exe{$n}: libul{build2-cc}: bin.whole = false
+}
+
+# Build options.
+#
+obja{*}: cxx.poptions += -DLIBBUILD2_CC_STATIC_BUILD
+objs{*}: cxx.poptions += -DLIBBUILD2_CC_SHARED_BUILD
+
+if $libpkgconf
+  cxx.poptions += -DBUILD2_LIBPKGCONF
+
+if ($cxx.target.class == 'windows')
+  cxx.libs += $regex.apply(advapi32 ole32 oleaut32,        \
+                           '(.+)',                         \
+                           $cxx.target.system == 'mingw32' \
+                           ? '-l\1'                        \
+                           : '\1.lib')
+
+# Export options.
+#
+lib{build2-cc}:
+{
+  cxx.export.poptions = "-I$out_root" "-I$src_root"
+  cxx.export.libs = $intf_libs
+}
+
+liba{build2-cc}: cxx.export.poptions += -DLIBBUILD2_CC_STATIC
+libs{build2-cc}: cxx.export.poptions += -DLIBBUILD2_CC_SHARED
+
+# For pre-releases use the complete version to make sure they cannot be used
+# in place of another pre-release or the final version. See the version module
+# for details on the version.* variable values.
+#
+# And because this is a build system module, we also embed the same value as
+# the interface version (note that we cannot use build.version.interface for
+# bundled modules because we could be built with a different version of the
+# build system).
+#
+ver = ($version.pre_release    \
+       ? "$version.project_id" \
+       : "$version.major.$version.minor")
+
+lib{build2-cc}: bin.lib.version = @"-$ver"
+libs{build2-cc}: bin.lib.load_suffix = "-$ver"
+
+h{msvc-setup}@./: install = false
+
+# Install into the libbuild2/cc/ subdirectory of, say, /usr/include/
+# recreating subdirectories.
+#
+{hxx ixx txx}{*}:
+{
+  install         = include/libbuild2/cc/
+  install.subdirs = true
+}

@@ -1,0 +1,75 @@
+# file      : build2/buildfile
+# license   : MIT; see accompanying LICENSE file
+
+# NOTE: imports should go into root.build.
+#
+libs = $libbutl
+
+# NOTE: don't forget to also update bpkg's buildfile if changing anything
+# here.
+#
+include ../libbuild2/
+libs += ../libbuild2/lib{build2}
+
+for m: bash bin c cc cli cxx in version
+{
+  include ../libbuild2/$m/
+  libs += ../libbuild2/$m/lib{build2-$m}
+}
+
+exe{b}: {hxx ixx txx cxx}{**} $libs
+
+# Target metadata, see also --build2-metadata in b.cxx.
+#
+exe{b}:
+{
+  export.metadata = 1 b
+  b.name = [string] b
+  b.version  = $version
+  b.checksum = $version
+  b.static = ($bin.link_member(exe) == liba)
+}
+
+# Build options.
+#
+# Pass our compiler target to be used as build2 host.
+#
+obj{b}: cxx.poptions += -DBUILD2_HOST_TRIPLET=\"$cxx.target\"
+
+# Pass the copyright notice extracted from the LICENSE file.
+#
+copyright = $process.run_regex(                      \
+  cat $src_root/LICENSE,                             \
+  'Copyright \(c\) (.+) \(see the AUTHORS file\)\.', \
+  '\1')
+
+obj{b}: cxx.poptions += -DBUILD2_COPYRIGHT=\"$copyright\"
+
+# NOTE: remember to update bpkg buildfile if changing anything here.
+#
+switch $cxx.target.class
+{
+  case 'linux'
+  {
+    # Make sure backtrace includes function names.
+    #
+    if ($cc.stdlib == 'glibc')
+      cxx.loptions += -rdynamic
+
+    # Make sure we use RPATH and not RUNPATH since the latter messes up
+    # dlopen().
+    #
+    cxx.loptions += -Wl,--disable-new-dtags
+  }
+  case 'windows'
+  {
+    # Adjust stack size (affects all threads).
+    #
+    #                                                8M        4M
+    stack_size = ($cxx.target.cpu == "x86_64" ? 8388608 : 4194304)
+
+    cxx.loptions += ($cxx.target.system == 'win32-msvc' \
+                     ? "/STACK:$stack_size"             \
+                     : "-Wl,--stack,$stack_size")
+  }
+}

@@ -1,0 +1,9 @@
+# file      : tests/test/config-build/buildfile
+# license   : MIT; see accompanying LICENSE file
+
+# Test config.test.
+#
+
+./: testscript exe{driver} $b
+
+exe{driver}: {hxx cxx}{*}

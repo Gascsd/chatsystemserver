@@ -1,0 +1,665 @@
+# file      : tests/function/regex/testscript
+# license   : MIT; see accompanying LICENSE file
+
+.include ../../common.testscript
+
+: replace
+:
+{
+  : arg-types
+  :
+  {
+    : untyped-string-string
+    :
+    $* <<EOI >'foo.o'
+    print $regex.replace('foo.cxx', [string] '(^[^.]*).*', [string] '\1.o')
+    EOI
+
+    : string-untyped-string
+    :
+    $* <<EOI >'foo.o'
+    print $regex.replace([string] 'foo.cxx', '(^[^.]*).*', [string] '\1.o')
+    EOI
+
+    : bool-string-untyped
+    :
+    $* <<EOI >'true.o'
+    print $regex.replace('a' == "a", [string] '(^[^.]*).*', '\1.o')
+    EOI
+
+    : uint64-untyped-string
+    :
+    $* <<EOI >'1.o'
+    print $regex.replace([uint64] 01, '(^[^.]*).*', [string] '\1.o')
+    EOI
+
+    : path-untyped-untyped
+    :
+    $* <<EOI >'foo.o'
+    print $regex.replace([path] 'foo.cxx', '(^[^.]*).*', '\1.o')
+    EOI
+
+    : multiple-names
+    :
+    $* <<EOI 2>>EOE != 0
+    print $regex.replace(foo.cxx bar.cxx, '([^.]*)', '\1.o')
+    EOI
+    error: invalid argument: invalid string value: multiple names
+      <stdin>:1:8: info: while calling regex.replace(<untyped>, <untyped>, <untyped>)
+    EOE
+
+    : null
+    :
+    $* <<EOI 2>>EOE != 0
+    print $regex.replace([null], '([^.]*)', '\1.o')
+    EOI
+    error: invalid argument: null value
+      <stdin>:1:8: info: while calling regex.replace(<untyped>, <untyped>, <untyped>)
+    EOE
+
+    : null-regex
+    :
+    $* <<EOI 2>>EOE != 0
+    print $regex.replace(foo.cxx, [null], '\1.o')
+    EOI
+    error: invalid argument: null value
+      <stdin>:1:8: info: while calling regex.replace(<untyped>, <untyped>, <untyped>)
+    EOE
+  }
+
+  : no-subs
+  :
+  $* <<EOI >'xbcxbc'
+  print $regex.replace('abcabc', 'a', 'x')
+  EOI
+
+  : no-match
+  :
+  $* <<EOI >'abcabc'
+  print $regex.replace('abcabc', 'd', 'x')
+  EOI
+
+  : flags
+  :
+  {
+    : icase
+    :
+    $* <<EOI >'Foo.o'
+    print $regex.replace("Foo.cxx", '(f[^.]*).*', '\1.o', icase)
+    EOI
+
+    : format_first-only
+    :
+    $* <<EOI >'foo.o'
+    print $regex.replace('foo.cxx', '([^.]*).*', '\1.o', format_first_only)
+    EOI
+
+    : format_no_copy
+    :
+    {
+      : all-matches
+      :
+      $* <<EOI >'xx'
+      print $regex.replace('abcabc', 'a', 'x', format_no_copy)
+      EOI
+
+      : first-only
+      :
+      $* <<EOI >'x'
+      print $regex.replace('abcabc', 'a', 'x', format_no_copy format_first_only)
+      EOI
+    }
+
+    : unknown
+    :
+    $* <<EOI 2>>EOE != 0
+    print $regex.replace("foo.cxx", '(f[^.]*).*', '\1.o', unknown)
+    EOI
+    error: invalid argument: invalid flag 'unknown'
+      <stdin>:1:8: info: while calling regex.replace(<untyped>, <untyped>, <untyped>, <untyped>)
+    EOE
+  }
+
+  : invalid-regex
+  :
+  $* <'print $regex.replace(a, "[", b)' 2>>~/EOE/ != 0
+  /error: invalid argument: invalid regex '\['.*/
+    <stdin>:1:8: info: while calling regex.replace(<untyped>, <untyped>, <untyped>)
+  EOE
+}
+
+: replace_lines
+:
+{
+  : untyped
+  :
+  {
+    : return-list
+    :
+    {
+      : non-null-fmt
+      :
+      $* <<EOI >'foo.hxx bar.txt'
+        v = "foo.cxx
+        bar.txt"
+
+        print $regex.replace_lines($v, '(.*)\.cxx', '\1.hxx')
+        EOI
+
+      : no-copy
+      :
+      $* <<EOI >'foo.hxx'
+        v = "foo.cxx
+        bar.txt"
+
+        print $regex.replace_lines($v, '(.*)\.cxx', '\1.hxx', format_no_copy)
+        EOI
+
+      : null-fmt
+      :
+      $* <<EOI >'bar.txt'
+        v = "foo.cxx
+        bar.txt"
+
+        print $regex.replace_lines($v, '(.*)\.cxx', [null])
+        EOI
+    }
+
+    : return-lines
+    :
+    : Note that print adds the trailing newline the value it prints.
+    :
+    {
+      : non-null-fmt
+      :
+      $* <<EOI >>EOO
+        v = "foo.cxx
+        bar.txt"
+
+        print $regex.replace_lines($v, '(.*)\.cxx', '\1.hxx', return_lines)
+        EOI
+        foo.hxx
+        bar.txt
+        EOO
+
+      : no-copy
+      :
+      $* <<EOI >'bar.hxx'
+        v = "foo.cxx
+        bar.txt"
+
+        print $regex.replace_lines($v, \
+                                   '(.*)\.txt', '\1.hxx', \
+                                   format_no_copy return_lines)
+        EOI
+
+      : null-fmt
+      :
+      $* <<EOI >'bar.txt'
+        v = "foo.cxx
+        bar.txt"
+
+        print $regex.replace_lines($v, '(.*)\.cxx', [null], return_lines)
+        EOI
+    }
+  }
+
+  : strings
+  :
+  {
+    : return-list
+    :
+    $* <<EOI >'foo.hxx bar.txt'
+      v = [string] "foo.cxx
+      bar.txt"
+
+      print $regex.replace_lines($v, [string] '(.*)\.cxx',  [string] '\1.hxx')
+      EOI
+
+    : return-lines
+    :
+    $* <<EOI >>EOO
+      v = [string] "foo.cxx
+      bar.txt"
+
+      print $regex.replace_lines($v, [string] '(.*)\.cxx', [string] '\1.hxx', return_lines)
+      EOI
+      foo.hxx
+      bar.txt
+      EOO
+  }
+}
+
+: match
+:
+{
+  : arg-types
+  :
+  {
+    : untyped-string
+    :
+    $* <<EOI >'true'
+    print $regex.match('foo.cxx', [string] '(^[^.]*).*')
+    EOI
+
+    : untyped-untyped
+    :
+    $* <<EOI >'true'
+    print $regex.match('foo.cxx', '(^[^.]*).*')
+    EOI
+  }
+
+  : flags
+  :
+  {
+    : none
+    :
+    $* <<EOI >'false'
+    print $regex.match("Foo.cxx", '(f[^.]*).*')
+    EOI
+
+    : icase
+    :
+    $* <<EOI >'true'
+    print $regex.match("Foo.cxx", '(f[^.]*).*', icase)
+    EOI
+
+    : return_subs
+    :
+    {
+      : success
+      :
+      $* <<EOI >'foo bar'
+      print $regex.match("foo   bar", '([^\s]*)\s+([^\s]*)', return_subs)
+      EOI
+
+      : no-subexpr
+      :
+      $* <<EOI >''
+      print $regex.match("foo   bar", '(?:[^\s]*)\s+(?:[^\s]*)', return_subs)
+      EOI
+
+      : failure
+      :
+      $* <<EOI >'[null]'
+      print $regex.match("   bar", '([^\s]+)\s+([^\s]+)', return_subs)
+      EOI
+    }
+  }
+}
+
+: search
+:
+{
+  : arg-types
+  :
+  {
+    : untyped-string
+    :
+    $* <<EOI >'true'
+    print $regex.search('.foo.cxx', [string] '([^.]*)')
+    EOI
+
+    : untyped-untyped
+    :
+    $* <<EOI >'true'
+    print $regex.search('.foo.cxx', '([^.]*)')
+    EOI
+  }
+
+  : flags
+  :
+  {
+    : none
+    :
+    $* <<EOI >'false'
+    print $regex.match("Foo.cxx", '(f[^.]*).*')
+    EOI
+
+    : icase
+    :
+    $* <<EOI >'true'
+    print $regex.match("Foo.cxx", '(f[^.]*).*', icase)
+    EOI
+
+    : return_subs
+    :
+    {
+      : success
+      :
+      $* <<EOI >'foo bar'
+      print $regex.search(" foo  bar baz", '([^\s]+)\s+([^\s]+)', return_subs)
+      EOI
+
+      : no-subexpr
+      :
+      $* <<EOI >''
+      print $regex.search("foo bar ba", '(?:[^\s]+)\s+(?:[^\s]+)', return_subs)
+      EOI
+
+      : failure
+      :
+      $* <<EOI >'[null]'
+      print $regex.search("   bar", '([^\s]+)\s+([^\s]+)', return_subs)
+      EOI
+    }
+
+    : return_match
+    :
+    {
+      : success
+      :
+      $* <<EOI >'foo  bar'
+      print $regex.search(" foo  bar baz", '([^\s]+)\s+([^\s]+)', return_match)
+      EOI
+
+      : subs
+      :
+      $* <<EOI >'foo  bar foo bar'
+      print $regex.search(" foo  bar baz", '([^\s]+)\s+([^\s]+)', return_match return_subs)
+      EOI
+
+      : failure
+      :
+      $* <<EOI >'[null]'
+      print $regex.search("   bar", '([^\s]+)\s+([^\s]+)', return_match)
+      EOI
+    }
+  }
+}
+
+: split
+:
+{
+  : all-parts
+  :
+  : Note that 3 parts a printed here ('|abc|', ' ' and '|def|'), separated by
+  : the space character.
+  :
+  $* <<EOI >'|abc|   |def|'
+  print $regex.split('abc def', '(\S+)', '|\1|')
+  EOI
+
+  : no-copy
+  :
+  : Note that 2 parts a printed here ('|abc|' and '|def|'), separated by the
+  : space character.
+  :
+  $* <<EOI >'|abc| |def|'
+  print $regex.split('abc   def', '(\S+)', '|\1|', format_no_copy)
+  EOI
+
+  : unmatched
+  :
+  : Note that only unmatched part is printed here (' '). Empty replacements are
+  : omitted.
+  :
+  $* <<EOI >' '
+  print $regex.split('abc def', '(\S+)', '')
+  EOI
+
+  : include-options
+  :
+  {
+    : quoted
+    :
+    $* <<EOI >'|-Ic:/dir 1| |-IC:/dir2| |-IC:/dir3| |-IC:/dir4| ||'
+    opts = '"-Ic:/dir 1"   "-IC:/dir2"   "-IC:/dir3"   "-IC:/dir4" ""'
+    print $regex.split($opts, ' *"([^"]*)" *', '|\1|')
+    EOI
+
+    : quoted-unquoted
+    :
+    : Note that one of the two captures (\1\2) is always empty as they are
+    : alternative ones.
+    :
+    $* <<EOI >'|-Ic:/dir 1| |-IC:/dir2| |-IC:/dir3| |-IC:/dir4| ||'
+    opts = '"-Ic:/dir 1"   -IC:/dir2  "-IC:/dir3"   "-IC:/dir4" ""'
+    print $regex.split($opts, '"([^"]*)"|([^" ]+)', '|\1\2|', format_no_copy)
+    EOI
+  }
+}
+
+: apply
+:
+{
+  : all-parts
+  :
+  $* <<EOI >'xbc cbx'
+  print $regex.apply(abc cba, 'a', 'x')
+  EOI
+
+  : omit-empty
+  :
+  $* <<EOI >'bc cb'
+  print $regex.apply(abc a cba, 'a', '')
+  EOI
+}
+
+: find-match
+:
+{
+  : match
+  :
+  {
+    : string
+    :
+    $* <<EOI >'true'
+    print $regex.find_match(-g -O3, [string] '-O[23]')
+    EOI
+
+    : untyped
+    :
+    $* <<EOI >'true'
+    print $regex.find_match(-g -O3, '-O[23]')
+    EOI
+
+    : strings
+    :
+    $* <<EOI >'true'
+    print $regex.find_match([strings] -g -O3, '-O[23]')
+    EOI
+
+    : nomatch
+    :
+    $* <<EOI >'false'
+    print $regex.find_match(-g -O1, '-O[23]')
+    EOI
+  }
+
+  : flags
+  :
+  {
+    : icase
+    :
+    $* <<EOI >'true'
+    print $regex.find_match(Foo.cxx, 'f[^.]+.*', icase)
+    EOI
+  }
+}
+
+: filter-match
+:
+{
+  : match
+  :
+  {
+    : string
+    :
+    $* <<EOI >'-O2 -O3'
+    print $regex.filter_match(-g -O2 -O3, [string] '-O[23]')
+    EOI
+
+    : untyped
+    :
+    $* <<EOI >'-O2 -O3'
+    print $regex.filter_match(-g -O2 -O3, '-O[23]')
+    EOI
+
+    : strings
+    :
+    $* <<EOI >'-O2 -O3'
+    print $regex.filter_match([strings] -g -O2 -O3, '-O[23]')
+    EOI
+
+    : nomatch
+    :
+    $* <<EOI >''
+    print $regex.filter_match(-g -O1, '-O[23]')
+    EOI
+  }
+
+  : filter-out
+  :
+  {
+    : untyped
+    :
+    $* <<EOI >'-g'
+    print $regex.filter_out_match(-g -O2 -O3, '-O[23]')
+    EOI
+
+    : all-match
+    :
+    $* <<EOI >''
+    print $regex.filter_out_match(-O2 -O3, '-O[23]')
+    EOI
+  }
+
+  : flags
+  :
+  {
+    : icase
+    :
+    $* <<EOI >'Foo.cxx'
+    print $regex.filter_match(Foo.cxx, 'f[^.]+.*', icase)
+    EOI
+  }
+}
+
+: find-search
+:
+{
+  : match
+  :
+  {
+    : string
+    :
+    $* <<EOI >'true'
+    print $regex.find_search(-g -O3, [string] '-O')
+    EOI
+
+    : untyped
+    :
+    $* <<EOI >'true'
+    print $regex.find_search(-g -O3, '-O')
+    EOI
+
+    : strings
+    :
+    $* <<EOI >'true'
+    print $regex.find_search([strings] -g -O3, '-O')
+    EOI
+
+    : nomatch
+    :
+    $* <<EOI >'false'
+    print $regex.find_search(-g, '-O')
+    EOI
+  }
+
+  : flags
+  :
+  {
+    : icase
+    :
+    $* <<EOI >'true'
+    print $regex.find_search(Foo.cxx, 'f', icase)
+    EOI
+  }
+}
+
+: filter-search
+:
+{
+  : match
+  :
+  {
+    : string
+    :
+    $* <<EOI >'-O2 -O3'
+    print $regex.filter_search(-g -O2 -O3, [string] '-O')
+    EOI
+
+    : untyped
+    :
+    $* <<EOI >'-O2 -O3'
+    print $regex.filter_search(-g -O2 -O3, '-O')
+    EOI
+
+    : strings
+    :
+    $* <<EOI >'-O2 -O3'
+    print $regex.filter_search([strings] -g -O2 -O3, '-O')
+    EOI
+
+    : nomatch
+    :
+    $* <<EOI >''
+    print $regex.filter_search(-g, '-O')
+    EOI
+  }
+
+  : filter-out
+  :
+  {
+    : untyped
+    :
+    $* <<EOI >'-g'
+    print $regex.filter_out_search(-g -O2 -O3, '-O')
+    EOI
+
+    : all-match
+    :
+    $* <<EOI >''
+    print $regex.filter_out_search(-O2 -O3, '-O')
+    EOI
+  }
+
+  : flags
+  :
+  {
+    : icase
+    :
+    $* <<EOI >'Foo.cxx'
+    print $regex.filter_search(Foo.cxx, 'f', icase)
+    EOI
+  }
+}
+
+: merge
+:
+{
+  : all-parts
+  :
+  $* <<EOI >'xbccbx'
+  print $regex.merge(abc cba, 'a', 'x')
+  EOI
+
+  : omit-empty
+  :
+  $* <<EOI >'bccb'
+  print $regex.merge(abc a cba, 'a', '')
+  EOI
+
+  : delim
+  :
+  $* <<EOI >'xbc-cbx'
+  print $regex.merge(abc cba, 'a', 'x', '-')
+  EOI
+
+  : string-delim
+  :
+  $* <<EOI >'xbc-cbx'
+  print $regex.merge(abc cba, 'a', 'x', [string] '-')
+  EOI
+}

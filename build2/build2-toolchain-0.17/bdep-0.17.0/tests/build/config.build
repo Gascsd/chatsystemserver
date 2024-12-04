@@ -1,0 +1,9 @@
+# Created automatically by the config module, but feel free to edit.
+#
+config.version = 1
+
+# Base configuration inherited from ../
+#
+
+config.bdep.tests.ci.server = https://ci.cppget.org
+config.bdep.tests.publish.repository = https://cppget.org

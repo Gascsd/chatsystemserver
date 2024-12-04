@@ -1,0 +1,48 @@
+#! /bin/sh
+
+# Normally, you don't need to regenerate the private key.
+#
+# openssl genrsa 4096 > key.pem
+
+# Note that for glibc versions prior to 2.34 there is an issue on i686 with
+# using certificates with expiration date beyond 2038.
+#
+openssl req -x509 -new -key key.pem -days 5475 -config default-openssl.cnf > \
+	default-cert.pem
+
+cat default-cert.pem | openssl x509 -sha256 -noout -fingerprint | \
+  sed -n 's/^SHA256 Fingerprint=\(.*\)$/\1/p' >default-cert-fp
+
+openssl req -x509 -new -key key.pem -days 5475 -config mismatch-openssl.cnf > \
+        mismatch-cert.pem
+
+openssl req -x509 -new -key key.pem -days 5475 -config noemail-openssl.cnf > \
+        noemail-cert.pem
+
+openssl req -x509 -new -key key.pem -days 5475 \
+	-config subdomain-openssl.cnf > subdomain-cert.pem
+
+openssl req -x509 -new -key key.pem -days 5475 -config self-openssl.cnf > \
+        self-cert.pem
+
+openssl req -x509 -new -key key.pem -days 5475 -config self-any-openssl.cnf > \
+        self-any-cert.pem
+
+# Normally, you have no reason to regenerate expired-cert.pem, as need to keep
+# it expired for the testing purposes. But if you do, copy expired-cert.pem
+# content to the certificate value of the following manifest files:
+#   ../rep-auth/expired/repositories.manifest
+#
+# To regenerate the packages and signature manifest files run bpkg rep-create
+# command, for example:
+#
+# bpkg rep-create ../rep-auth/expired --key key.pem
+#
+# We cannot do it in the testscript since the certificate has expired. This is
+# also the reason why we store these auto-generated manifests in git.
+#
+# Will have to wait 1 day until the certificate expires. Until then testscript
+# will be failing.
+#
+# openssl req -x509 -new -key key.pem -days 1 -config default-openssl.cnf > \
+#         expired-cert.pem

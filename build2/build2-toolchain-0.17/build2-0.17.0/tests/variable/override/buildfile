@@ -1,0 +1,4 @@
+# file      : tests/variable/override/buildfile
+# license   : MIT; see accompanying LICENSE file
+
+./: testscript $b

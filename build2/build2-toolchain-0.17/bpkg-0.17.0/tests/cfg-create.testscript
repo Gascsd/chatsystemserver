@@ -1,0 +1,291 @@
+# file      : tests/cfg-create.testscript
+# license   : MIT; see accompanying LICENSE file
+
+.include common.testscript
+
+config_cxx = [cmdline] config.cxx=$quote($recall($cxx.path) $cxx.config.mode, true)
+
+cfg_create += 2>!
+
+cfg_info   += -d cfg
+pkg_status += -d cfg
+
+: non-empty
+:
+$* 2>>/~%EOE% != 0
+error: directory ./ is not empty
+  info: use --wipe to clean it up but be careful
+EOE
+
+: dir
+:
+{
+  test.arguments += -d cfg
+  test.cleanups  += &cfg/***
+
+  : no-vars-mods
+  :
+  {
+    $* 2>>/~%EOE%;
+      %created new configuration in .+/cfg/%
+      %  uuid: .{36}%
+        type: target
+      EOE
+
+    $cfg_info >>/~"%EOO%";
+      %path: .+/cfg/%
+      %uuid: .{36}%
+      type: target
+      %name: %
+      EOO
+
+    $pkg_status libfoo >'libfoo unknown'
+  }
+
+  : conf-var
+  :
+  {
+    $* "config.install.root='$~/opt'" 2>>/~%EOE%;
+      %created new configuration in .+/cfg/%
+      %  uuid: .{36}%
+        type: target
+      EOE
+
+    $cfg_info >>/~"%EOO%";
+      %path: .+/cfg/%
+      %uuid: .{36}%
+      type: target
+      %name: %
+      EOO
+
+    $pkg_status libfoo >'libfoo unknown';
+
+    cat cfg/build/config.build >>/~"%EOO%"
+      %.+
+      %config.install.root = '?.+/opt/'?%
+      %.+
+      EOO
+  }
+
+  : module
+  :
+  {
+    $* cxx $config_cxx 2>>/~%EOE%;
+      %created new configuration in .+/cfg/%
+      %  uuid: .{36}%
+        type: target
+      EOE
+
+    $cfg_info >>/~"%EOO%";
+      %path: .+/cfg/%
+      %uuid: .{36}%
+      type: target
+      %name: %
+      EOO
+
+    $pkg_status libfoo >'libfoo unknown';
+
+    cat cfg/build/config.build >>/~"%EOO%"
+      %.+
+      %config.cxx = .+%
+      %.+
+      EOO
+  }
+
+  : wipe
+  :
+  {
+    mkdir -p cfg/foo/bar &!cfg/ &!cfg/foo/ &!cfg/foo/bar/;
+
+    $* --wipe 2>>/~%EOE%;
+      %created new configuration in .+/cfg/%
+      %  uuid: .{36}%
+        type: target
+      EOE
+
+    $cfg_info >>/~"%EOO%";
+      %path: .+/cfg/%
+      %uuid: .{36}%
+      type: target
+      %name: %
+      EOO
+
+    $pkg_status libfoo >'libfoo unknown'
+  }
+
+  : existing
+  :
+  {
+    $build 'create(cfg/,cc)' $config_cxx 2>!;
+
+    $* --existing 2>>/~%EOE%;
+      %initialized existing configuration in .+/cfg/%
+      %  uuid: .{36}%
+        type: target
+      EOE
+
+    $cfg_info >>/~"%EOO%";
+      %path: .+/cfg/%
+      %uuid: .{36}%
+      type: target
+      %name: %
+      EOO
+
+    $pkg_status libfoo >'libfoo unknown'
+  }
+}
+
+: name
+:
+{
+  test.arguments += -d cfg
+
+  : valid
+  :
+  {
+    $* --name foo 2>>/~%EOE% &cfg/***;
+      %created new configuration in .+/cfg/%
+      %  uuid: .{36}%
+        type: target
+        name: foo
+      EOE
+
+    $cfg_info >>/~"%EOO%";
+      %path: .+/cfg/%
+      %uuid: .{36}%
+      type: target
+      name: foo
+      EOO
+
+    $pkg_status libfoo >'libfoo unknown'
+  }
+
+  : invalid
+  :
+  : Also use the short option.
+  :
+  $* --name 123 2>>EOE != 0
+    error: invalid --name option value '123': illegal first character (must be alphabetic or underscore)
+    EOE
+}
+
+: type
+:
+{
+  test.arguments += -d cfg
+
+  : valid
+  :
+  {
+    $* --type host 2>>/~%EOE% &cfg/***;
+      %created new configuration in .+/cfg/%
+      %  uuid: .{36}%
+        type: host
+      EOE
+
+    $cfg_info >>/~"%EOO%";
+      %path: .+/cfg/%
+      %uuid: .{36}%
+      type: host
+      %name: %
+      EOO
+
+    $pkg_status libfoo >'libfoo unknown'
+  }
+
+  : invalid
+  :
+  : Also use the short option.
+  :
+  $* --type '' 2>>EOE != 0
+    error: empty --type option value
+    EOE
+}
+
+: uuid
+:
+{
+  test.arguments += -d cfg
+
+  : valid
+  :
+  {
+    uuid='18f48b4b-b5d9-4712-b98c-1930df1c4228';
+
+    $* --uuid $uuid --name foo 2>>/~"%EOE%" &cfg/***;
+      %created new configuration in .+/cfg/%
+        uuid: $uuid
+        type: target
+        name: foo
+      EOE
+
+    $cfg_info >>/~"%EOO%";
+      %path: .+/cfg/%
+      uuid: $uuid
+      type: target
+      name: foo
+      EOO
+
+    $pkg_status libfoo >'libfoo unknown'
+  }
+
+  : invalid
+  :
+  : Also use the short option.
+  :
+  $* --uuid '123' 2>>EOE != 0
+    error: invalid value '123' for option '--uuid'
+    EOE
+}
+
+: link-config
+:
+{
+  test.arguments += -d cfg
+
+  : valid-type
+  :
+  {
+    $cfg_create -d host   --type 'host'   &host/***;
+    $cfg_create -d build2 --type 'build2' &build2/***;
+
+    $* --host-config host --build2-config build2 2>>/~%EOE% &cfg/***;
+      %created new configuration in .+/cfg/%
+      %  uuid: .{36}%
+        type: target
+      EOE
+
+    $cfg_info --link >>/~"%EOO%";
+      %path: .+/cfg/%
+      %uuid: .{36}%
+      type: target
+      %name: %
+
+      %path: .+/host/%
+      %uuid: .{36}%
+      type: host
+      %name: %
+
+      %path: .+/build2/%
+      %uuid: .{36}%
+      type: build2
+      %name: %
+      EOO
+
+    $pkg_status libfoo >'libfoo unknown'
+  }
+
+  : invalid-type
+  :
+  {
+    $cfg_create -d cfg2 &cfg2/***;
+
+    $* --host-config cfg2 2>>/~%EOE% != 0;
+      %error: host configuration .+/cfg2/ is of 'target' type%
+      EOE
+
+    $* --build2-config cfg2 2>>/~%EOE% != 0
+      %error: build2 configuration .+/cfg2/ is of 'target' type%
+      EOE
+  }
+}

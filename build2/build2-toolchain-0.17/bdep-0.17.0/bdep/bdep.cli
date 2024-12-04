@@ -1,0 +1,529 @@
+// file      : bdep/bdep.cli
+// license   : MIT; see accompanying LICENSE file
+
+include <bdep/common.cli>;
+
+"\section=1"
+"\name=bdep"
+"\summary=project dependency manager"
+
+namespace bdep
+{
+  {
+    "<command> <topic> <common-options> <command-options> <command-args>",
+
+    "\h|SYNOPSIS|
+
+     \c{\b{bdep --help}\n
+        \b{bdep --version}\n
+        \b{bdep help} [<command> | <topic>]\n
+        \b{bdep} [<common-options>] <command> [<command-options>] <command-args>}
+
+     \h|DESCRIPTION|
+
+     The \cb{build2} project dependency manager is used to manage the
+     dependencies of a project during development.
+
+     For a detailed description of any command or help topic, use the
+     \cb{help} command or see the corresponding man page (the man pages have
+     the \cb{bdep-} prefix, for example \l{bdep-help(1)}). Note also that
+     <command-options> and <command-args> can be specified in any order and
+     <common-options> can be specified as part of <command-options>."
+  }
+
+  // For usage it's nice to see the list of commands on the first page. So
+  // let's not put this "extended" description into usage.
+  //
+  {
+    "",
+    "",
+    "A \cb{bdep} project is a directory, normally under a version control
+     system such as \cb{git(1)}, called \i{project repository}. A project
+     contains one or more \i{packages}. If it contain several, then they are
+     normally related, for example, the \cb{libhello} library and the
+     \cb{hello} program.
+
+     Packages in a project may depend on other packages outside of the
+     project. To distinguish between the two we call them \i{project packages}
+     and \i{dependency packages}, respectively.  Naturally, our project
+     packages may be someone else's dependency packages.
+
+     A simple, single-package project contains the package in the root of the
+     project repository. For example (note the location of the package
+     \cb{manifest} and \cb{lockfile}):
+
+     \
+     hello/
+     ├── .git/
+     ├── ...
+     ├── lockfile
+     └── manifest
+     \
+
+     See \l{bpkg#manifest-package Package Manifest} for details on the
+     \cb{manifest} file.
+
+     If a project contains multiple packages or we wish to place the package
+     into a subdirectory, then the root of the project repository must
+     contain the \cb{packages.manifest} file that specifies the package
+     locations. For example:
+
+     \
+     hello/
+     ├── .git/
+     ├── hello/
+     │   ├── ...
+     │   ├── lockfile
+     │   └── manifest
+     ├── libhello/
+     │   ├── ...
+     │   ├── lockfile
+     │   └── manifest
+     └── packages.manifest
+     \
+
+     For this project, \cb{packages.manifest} would have the following
+     contents:
+
+     \
+     : 1
+     location: hello/
+     :
+     location: libhello/
+     \
+
+     A project repository root would usually also contain the
+     \cb{repositories.manifest} file that lists the repositories that provide
+     the dependency packages. For example:
+
+     \
+     hello/
+     ├── ...
+     ├── manifest
+     └── repositories.manifest
+     \
+
+     If our \cb{hello} project wanted to use \cb{libhello} as a dependency
+     package, then its \cb{repositories.manifest} could look like this:
+
+     \
+     : 1
+     summary: hello project repository
+     :
+     role: prerequisite
+     location: https://example.com/libhello.git
+     \
+
+     See \l{bpkg#manifest-repository-list Repository List Manifest} for
+     details on the \cb{repositories.manifest} file.
+
+     For development a \cb{bdep} project is associated with one or more
+     \l{bpkg(1)} \i{build configurations}. These configuration are used as a
+     \i{backing} for building project packages and their dependencies.
+
+     The list of the associated build configuration as well as the list of
+     project packages initialized in each configuration are stored in the
+     \cb{bdep} \i{project database} under the \cb{.bdep/} subdirectory of the
+     project root directory. For example:
+
+     \
+     hello-gcc/     # Build configuration for gcc.
+     hello-clang/   # Build configuration for clang.
+     hello/
+     ├── .bdep/
+     ├── .git/
+     └── ...
+     \
+
+     The core of \cb{bdep} functionality is \i{state synchronization} between
+     the project and one or more associated build configurations. For example,
+     if we list a new dependency in the package's \cb{manifest} file, then
+     \cb{bdep} fetches and configures this dependency in a build
+     configuration. Similarly, if we upgrade or downgrade a dependency in a
+     build configuration, then \cb{bdep} updates the corresponding entry in
+     the package's \cb{lockfile}.
+
+     A typical \cb{bdep} workflow would consist of the following steps.
+
+     \dl|
+
+     \li|\b{Obtain the Project}\n
+
+         Normally we would use the version control system to obtain the
+         project we want to develop:
+
+         \
+         $ git clone ssh://example.com/hello.git
+         \
+
+         Alternatively, we can use the \l{bdep-new(1)} command to start a new
+         project (see \l{bpkg#package-name Package Name} for details on
+         project naming):
+
+         \
+         $ bdep new -l c++ -t exe hello
+         \
+
+         Similar to version control tools, we normally run \cb{bdep} from the
+         project's directory or one of its subdirectories:
+
+         \
+         $ cd hello
+         \
+
+         See \l{bdep-projects-configs(1)} for alternative ways to specify
+         the project location.
+
+         |
+
+
+     \li|\b{Initialize the Project}\n
+
+         Next we use the \l{bdep-init(1)} command to create new or add
+         existing build configurations and initialize our project in these
+         configurations:
+
+         \
+         $ bdep init -C ../hello-gcc @gcc cc config.cxx=g++
+         $ bdep init -A ../hello-clang @clang
+         \
+
+         If the configuration directory is next to the project and its name is
+         in the \c{\i{prj-name}\b{-}\i{cfg-name}} form, then the shortcut
+         version of the \c{init} can be used instead:
+
+         \
+         $ bdep init -C @gcc cc config.cxx=g++
+         $ bdep init -A @clang
+         \
+
+         After initialization we can use the \l{bdep-status(1)} command to
+         examine the status of our project in its configurations:
+
+         \
+         $ bdep status -a
+         in configuration @gcc:
+         hello configured 0.1.0-a.0.19700101000000
+
+         in configuration @clang:
+         hello configured 0.1.0-a.0.19700101000000
+         \
+
+         Most \cb{bdep} commands operate on one or more build configurations
+         associated with the project. If we don't specify one explicitly, then
+         the \i{default configuration} (usually the first added; \cb{gcc} in
+         our case) is used. Alternatively, we can specify the configurations
+         by name (if assigned), as directories, or with \c{\b{--all}|\b{-a}}
+         (see \l{bdep-projects-configs(1)} for details). For example:
+
+         \
+         $ bdep status @clang @gcc      # by name
+         $ bdep status -c ../hello-gcc  # as a directory
+         \
+
+         If a command is operating on multiple configurations (like \cb{status
+         -a} in the previous example), then it will print a line identifying
+         each configuration before printing the command's result.
+
+         By default the project's source directory is configured to forward to
+         the default build configuration. That is, we can run the build system
+         in the source directory and it will automatically build in the
+         forwarded configuration as well as link the results back to the
+         source directory using symlinks or another suitable mechanism (see
+         \l{bdep-config(1)} for details). For example:
+
+         \
+         $ b        # build in gcc
+         <...>
+
+         $ ./hello  # run the result
+         \
+
+         Using the build system directly on configurations other than the
+         default requires explicitly specifying their paths. To make this more
+         convenient, the \l{bdep-update(1)}, \l{bdep-test(1)}, and
+         \l{bdep-clean(1)} commands allow us to refer to them by names,
+         perform the desired build system operation on several of them at
+         once, and, in case of \cb{test}, perform it on immediate or all
+         dependencies or a project. For example:
+
+         \
+         $ bdep test @gcc @clang
+         in configuration @gcc:
+         <...>
+
+         in configuration @clang:
+         <...>
+         \
+
+         To deinitialize a project in one or more build configurations we
+         can use the \l{bdep-deinit(1)} command. For example:
+
+         \
+         $ bdep deinit -a
+         \
+
+         |
+
+     \li|\b{Add, Remove, or Change Dependencies}\n
+
+         Let's say we found \cb{libhello} that we would like to use in our
+         project. First we edit our project's \cb{repositories.manifest}
+         file and add the \cb{libhello}'s repository as our prerequisite:
+
+         \
+         $ cat repositories.manifest
+         ...
+         role: prerequisite
+         location: https://example.com/libhello.git
+         ...
+         \
+
+         Next we edit our \cb{manifest} file and specify a dependency on
+         \cb{libhello}:
+
+         \
+         $ cat manifest
+         ...
+         depends: libhello ^1.0.0
+         ...
+         \
+
+         If we now run \l{bdep-status(1)}, we will notice that a new
+         \i{iteration} of our project is available for synchronization:
+
+         \
+         $ bdep status
+         hello configured 0.1.0-a.0.19700101000000
+               available  0.1.0-a.0.19700101000000#1
+         \
+
+         See \l{bpkg#package-version Package Version} for details on package
+         versions and iterations.|
+
+     \li|\b{Synchronize the Project with Configurations}\n
+
+         To synchronize changes in the project's dependency information with
+         its build configurations we use the \l{bdep-sync(1)} command.
+         Continuing with our example, this will result in \cb{libhello} being
+         downloaded and configured since our project now depends on it:
+
+         \
+         $ bdep sync
+         synchronizing:
+           build libhello/1.0.0 (required by hello)
+           upgrade hello/0.1.0-a.0.19700101000000#1
+
+         $ bdep status -i
+         hello configured 0.1.0-a.0.19700101000000#1
+           libhello ^1.0.0 configured 1.0.0
+         \
+
+         Note that by default build configurations are automatically
+         synchronized on every build system invocation (see \l{bdep-config(1)}
+         for details). As a result, we rarely need to run the \cb{sync}
+         command explicitly and instead can just run the desired build system
+         operation (for instance, \cb{update} or \cb{test}) directly. For
+         example:
+
+         \
+         $ b test
+         synchronizing:
+           build libhello/1.0.0 (required by hello)
+           upgrade hello/0.1.0-a.0.19700101000000#1
+         <...>
+         \
+
+         It is also possible for several projects to share a build
+         configuration. In this case all the projects are synchronized at once
+         regardless of the originating project. For example, if we were also
+         the authors of \cb{libhello} and hosted it in a separate version
+         control repository (as opposed to being a package in the \cb{hello}
+         repository), then it would have been natural to develop it together
+         with \cb{hello} in the same configurations:
+
+         \
+         $ cd ../libhello
+         $ bdep init -A ../hello-gcc @gcc
+         $ bdep sync  # synchronizes both hello and libhello
+         \
+
+         |
+
+     \li|\b{Upgrade or Downgrade Dependencies}\n
+
+         The \l{bdep-sync(1)} command is also used to upgrade or downgrade
+         dependencies (and it is also executed as the last step of \cb{init}).
+         Let's say we learned a new version of \cb{libhello} was released and
+         we would like to try it out.
+
+         To refresh the list of available dependency packages we use the
+         \l{bdep-fetch(1)} command (or, as a shortcut, the \cb{-f} flag to
+         \cb{status}):
+
+         \
+         $ bdep fetch
+
+         $ bdep status libhello
+         libhello configured 1.0.0 available [1.1.0]
+         \
+
+         Without an explicit version or the \c{\b{--patch}|\b{-p}} option,
+         \cb{sync} will upgrade the specified dependency to the latest
+         available version:
+
+         \
+         $ bdep sync libhello
+         synchronizing:
+           upgrade libhello/1.1.0
+           reconfigure hello/0.1.0
+
+         $ bdep status -i
+         hello configured 0.1.0-a.0.19700101000000#1
+           libhello ^1.0.0 configured 1.1.0
+         \
+
+         Let's say we didn't like the new version and would like to go back to
+         using the old one. To downgrade a dependency we have to specify its
+         version explicitly:
+
+         \
+         $ bdep status -o libhello
+         libhello configured 1.1.0 available [1.0.0] (1.1.0)
+
+         $ bdep sync libhello/1.0.0
+         synchronizing:
+           downgrade libhello/1.1.0
+           reconfigure hello/0.1.0
+         \
+
+         ||
+    "
+  }
+
+  class commands
+  {
+    "\h#commands|COMMANDS|"
+
+    //
+    // NOTE: Use the same sentence as in the page's \summary and make
+    // sure it is short enough to fit in one line in usage.
+    //
+
+    bool help
+    {
+      "[<topic>]",
+      "\l{bdep-help(1)} \- show help for a command or help topic",
+      ""
+    }
+
+    bool new
+    {
+      "\l{bdep-new(1)} \- create and initialize new project"
+    }
+
+    bool init
+    {
+      "\l{bdep-init(1)} \- initialize project in build configurations"
+    }
+
+    bool sync
+    {
+      "\l{bdep-sync(1)} \- synchronize project and build configurations"
+    }
+
+    bool fetch
+    {
+      "\l{bdep-fetch(1)} \- fetch list of available project dependencies"
+    }
+
+    bool status
+    {
+      "\l{bdep-status(1)} \- print status of project and/or its dependencies"
+    }
+
+    bool ci
+    {
+      "\l{bdep-ci(1)} \- submit project test request to CI server"
+    }
+
+    bool release
+    {
+      "\l{bdep-release(1)} \- manage project's version during release"
+    }
+
+    bool publish
+    {
+      "\l{bdep-publish(1)} \- publish project to archive repository"
+    }
+
+    bool deinit
+    {
+      "\l{bdep-deinit(1)} \- deinitialize project in build configurations"
+    }
+
+    bool config
+    {
+      "\l{bdep-config(1)} \- manage project's build configurations"
+    }
+
+    bool test
+    {
+      "\l{bdep-test(1)} \- test project in build configurations"
+    }
+
+    bool update
+    {
+      "\l{bdep-update(1)} \- update project in build configurations"
+    }
+
+    bool clean
+    {
+      "\l{bdep-clean(1)} \- clean project in build configurations"
+    }
+  };
+
+  // Make sure these don't conflict with command names above.
+  //
+  class topics
+  {
+    "\h|HELP TOPICS|"
+
+    bool common-options
+    {
+      "\l{bdep-common-options(1)} \- details on common options"
+    }
+
+    bool projects-configs
+    {
+      "\l{bdep-projects-configs(1)} \- specifying projects and configurations"
+    }
+
+    bool default-options-files
+    {
+      "\l{bdep-default-options-files(1)} \- specifying default options"
+    }
+
+    bool argument-grouping
+    {
+      "\l{bdep-argument-grouping(1)} \- argument grouping facility"
+    }
+  };
+
+  class options: common_options
+  {
+    bool --help;
+    bool --version;
+  };
+
+  "\h|EXIT STATUS|
+
+  Non-zero exit status is returned in case of an error.
+
+  \h|ENVIRONMENT|
+
+  The \cb{BDEP_DEF_OPT} environment variable is used to suppress loading of
+  default options files in nested \cb{bdep} invocations. Its values are
+  \cb{false} or \cb{0} to suppress and \cb{true} or \cb{1} to load.
+  "
+}

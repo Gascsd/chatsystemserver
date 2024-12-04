@@ -1,0 +1,129 @@
+# file      : tests/rep-fetch-git-commit.testscript
+# license   : MIT; see accompanying LICENSE file
+
++git clone "$rep_git/state0/style-basic.git" 2>! &style-basic/***
++git clone "$rep_git/state0/libbar.git"      2>! &libbar/***
+
+: unadvertised
+:
+{
+  +git -C ../style-basic log '--pretty=format:%H' --all --grep='README' | \
+   set commit
+
+  : no-refname
+  :
+  : Here we also test that a commit can be specified without leading '@'.
+  :
+  {
+    $clone_root_cfg && $rep_add "$rep/state0/style-basic.git#$commit";
+
+    if ($git_protocol == 'https-dumb')
+      info = "$info_repo_hist$reason_dumb$info_dumb"
+    elif ($git_protocol != 'https-smart-unadv')
+      info = "$info_repo_hist$reason_unadv"
+    end;
+
+    $* 2>>~"%EOE%"
+      %fetching git:.+style-basic#$commit%
+      %querying .+style-basic\.git%?
+      %fetching from .+style-basic\.git%
+      $info
+      1 package\(s\) in 1 repository\(s\)
+      EOE
+  }
+
+  : refname
+  :
+  {
+    $clone_root_cfg && $rep_add "$rep/state0/style-basic.git#stable@$commit";
+
+    if ($git_protocol == 'https-dumb')
+      info = "$info_ref_hist$reason_dumb$info_dumb"
+    elif ($git_protocol != 'https-smart-unadv')
+      info = "$info_ref_hist$reason_unadv"
+    end;
+
+    $* 2>>~"%EOE%"
+      %fetching git:.+style-basic#stable@$commit%
+      %querying .+style-basic\.git%?
+      %fetching from .+style-basic\.git%
+      $info
+      1 package\(s\) in 1 repository\(s\)
+      EOE
+  }
+}
+
+: advertised
+:
+{
+  +git -C ../style-basic log '--pretty=format:%H' --all --grep='INSTALL' | \
+   set commit
+
+  +if ($git_protocol == 'https-dumb')
+     info = "$info_ref_hist$reason_dumb$info_dumb"
+   end
+
+  : no-refname
+  :
+  {
+    $clone_root_cfg && $rep_add "$rep/state0/style-basic.git#@$commit";
+
+    $* 2>>~"%EOE%"
+      %fetching git:.+style-basic#@$commit%
+      %querying .+style-basic\.git%?
+      %fetching from .+style-basic.\git%
+      %querying .+style-basic\.git%?
+      $info
+      1 package\(s\) in 1 repository\(s\)
+      EOE
+  }
+
+  : refname
+  :
+  {
+    $clone_root_cfg && $rep_add "$rep/state0/style-basic.git#stable@$commit";
+
+    $* 2>>~"%EOE%"
+      %fetching git:.+style-basic#stable@$commit%
+      %querying .+style-basic\.git%?
+      %fetching from .+style-basic\.git%
+      %querying .+style-basic\.git%?
+      $info
+      1 package\(s\) in 1 repository\(s\)
+      EOE
+  }
+}
+
+: peeled
+:
+{
+  +git -C ../libbar log '--pretty=format:%H' --all --grep='Create' | \
+   set commit
+
+  : remap
+  :
+  : Test that the commit id is properly remapped back to the advertised tag
+  : reference.
+  :
+  {
+    $clone_root_cfg && $rep_add "$rep/state0/libbar.git#@$commit";
+
+    $* 2>>~"%EOE%"
+      %fetching git:.+libbar#@$commit%
+      %.+
+      EOE
+  }
+
+  : peel
+  :
+  : Test that the tag reference is properly peeled into the commit id.
+  :
+  {
+    $clone_root_cfg && $rep_add "$rep/state0/libbar.git#v1.0.0,-$commit";
+
+    $* 2>>~%EOE%
+      %.+
+      0 package(s) in 1 repository(s)
+      EOE
+  }
+}

@@ -1,0 +1,186 @@
+// file      : bpkg/cfg-create.cli
+// license   : MIT; see accompanying LICENSE file
+
+include <bpkg/common.cli>;
+
+"\section=1"
+"\name=bpkg-cfg-create"
+"\summary=create configuration"
+
+namespace bpkg
+{
+  {
+    "<options>
+     <cfg-args> <cfg-var> <module>",
+
+    "\h|SYNOPSIS|
+
+     \c{\b{bpkg cfg-create}|\b{create} [<options>] [<cfg-args>]\n
+        \b{bpkg cfg-create}|\b{create} [<options>] \b{--existing|-e}}
+
+     \c{<cfg-args> = (<module> | <cfg-var>)...}
+
+     \h|DESCRIPTION|
+
+     The \cb{cfg-create} command creates a new \cb{bpkg} configuration with
+     the specified \cb{build2} modules and configuration variables (the first
+     form) or initializes one based on an existing build system configuration
+     (the second form). The \cb{bpkg} configuration itself is a build system
+     configuration; see build system driver (\l{b(1)}) \cb{create}
+     meta-operation for details.
+
+     Unless the \cb{--existing|-e} or \cb{--wipe} option is specified,
+     \cb{cfg-create} expects the configuration directory to be empty or to not
+     exist (in which case it will be created).
+
+     By default, the configuration created with the first form loads the
+     \cb{config}, \cb{test}, \cb{dist}, and \cb{install} modules. However,
+     additional modules and, if required, their configuration variables can be
+     specified as the \cb{cfg-create} arguments. For example:
+
+     \
+     bpkg create cxx config.cxx=clang++ config.install.root=/usr/local
+     \
+
+     By default, \cb{bpkg} appends \cb{.config} to the names of the modules
+     that you specify so that only their configurations are loaded. You can
+     override this behavior by specifying the period (\cb{.}) after the module
+     name. You can also instruct \cb{bpkg} to use the optional module load by
+     prefixing the module name with the question mark (\cb{?}). For example:
+
+     \
+     bpkg create cxx. \"?cli\"
+     \
+
+     Configurations can be linked with each other to allow a package to be
+     built in one configuration while its dependencies in one or more linked
+     configurations. This can be used to create a \"base\" configuration with
+     common dependencies that are shared between multiple configurations. This
+     mechanism is also used to provide a host configuration that is used to
+     build build-time dependencies.
+
+     Each configuration is assigned an automatically-generated UUID unless one
+     is specified with the \cb{--uuid} option. This UUID is used to check the
+     integrity of configuration links. For convenience of referring to linked
+     configurations, a configuration can also be assigned a name with the
+     \cb{--name} option.
+
+     A configuration also has a type specified with the \cb{--type} option.
+     Three predefined types are \cb{target}, \cb{host}, and \cb{build2}. If
+     the type is not specified explicitly, then \cb{target} is assumed. When
+     satisfying a dependency of one package on another, a linked configuration
+     will only be considered if (1) it has the same type as the other
+     configuration for run-time dependencies, (2) it has the \cb{host} type
+     for regular build-time dependencies, and (3) it has the \cb{build2} type
+     for build system module build-time dependencies. Note that a host
+     configuration is a target configuration for the host machine. So to
+     create a self-hosted configuration, use type \cb{host}.
+
+     To link a configuration we use the \l{bpkg-cfg-link(1)} command. As a
+     shortcut, host and build system module configurations can also be linked
+     during the configuration creation with the \cb{--host-config} and
+     \cb{--build2-config} options, respectively. If a build-time dependency is
+     encountered in a configuration that has no linked configuration of a
+     suitable type (\cb{host} or \cb{build2}, nor is itself of a suitable
+     type), then a private host or build system module configuration named
+     \cb{host} or \cb{build2}, respectively, is created automatically inside
+     the configuration's \c{.bpkg/} subdirectory.
+     "
+  }
+
+  class cfg_create_options: common_options
+  {
+    "\h|CFG-CREATE OPTIONS|"
+
+    dir_path --directory|-d (".")
+    {
+      "<dir>",
+      "Create the configuration in <dir> rather than in the current working
+       directory."
+    }
+
+    bool --existing|-e
+    {
+      "Initialize a \cb{bpkg} configuration based on an existing build system
+       configuration."
+    }
+
+    bool --wipe
+    {
+      "Wipe the configuration directory clean before creating the new
+       configuration. For safety, this option requires that you specify the
+       configuration directory explicitly with \cb{--directory|-d}."
+    }
+
+    dir_path --host-config
+    {
+      "<dir>",
+      "Link the specified host configuration with the configuration being
+       created as if by running the \l{bpkg-cfg-link(1)} command."
+    }
+
+    bool --no-host-config
+    {
+      "Ignore any specified \cb{--host-config} options."
+    }
+
+    dir_path --build2-config
+    {
+      "<dir>",
+      "Link the specified build system module configuration with the
+       configuration being created as if by running the \l{bpkg-cfg-link(1)}
+       command."
+    }
+
+    bool --no-build2-config
+    {
+      "Ignore any specified \cb{--build2-config} options."
+    }
+
+    string --name
+    {
+      "<name>",
+      "The name of the configuration being created. If this configuration is
+       linked with another configuration using \l{bpkg-cfg-link(1)}, this name
+       will be used as the link name unless overridden. By default the
+       configuration is created unnamed."
+    }
+
+    string --type = "target"
+    {
+      "<type>",
+      "The type of the configuration being created. By default, configuration
+       of type \cb{target} is created."
+    }
+
+    uuid_type --uuid
+    {
+      "<uuid>",
+      "Use the specified UUID as the configuration id instead of generating
+       one automatically."
+    }
+  };
+
+  "
+   \h|DEFAULT OPTIONS FILES|
+
+   See \l{bpkg-default-options-files(1)} for an overview of the default
+   options files. For the \cb{cfg-create} command the search start directory
+   is the parent directory of the new configuration. The following options
+   files are searched for in each directory and, if found, loaded in the
+   order listed:
+
+   \
+   bpkg.options
+   bpkg-cfg-create.options
+   \
+
+   The following \cb{cfg-create} command options cannot be specified in the
+   default options files:
+
+   \
+   --directory|-d
+   --wipe
+   \
+  "
+}

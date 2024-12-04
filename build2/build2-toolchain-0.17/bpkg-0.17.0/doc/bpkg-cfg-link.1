@@ -1,0 +1,150 @@
+.\" Process this file with
+.\" groff -man -Tascii bpkg-cfg-link.1
+.\"
+.TH bpkg-cfg-link 1 "June 2024" "bpkg 0.17.0"
+.SH NAME
+\fBbpkg-cfg-link\fR \- link configuration
+.SH "SYNOPSIS"
+.PP
+\fBbpkg cfg-link\fR [\fIoptions\fR] \fIdir\fR\fR
+.SH "DESCRIPTION"
+.PP
+The \fBcfg-link\fR command links the specified \fBbpkg\fR configuration with
+the current configuration\. Note that it also establishes an implicit backlink
+from the specified to the current configuration\. See \fBbpkg-cfg-create(1)\fP
+for background on linked configurations\. To unlink previously linked
+configurations use \fBbpkg-cfg-unlink(1)\fP\.
+.PP
+The linked configurations are normally referred to using names when specified
+on the \fBbpkg\fR command line\. Unless overridden with the \fB--name\fR
+option, the original configuration name is used to name the link\. If the link
+is unnamed, then it can be referred to using the numeric id that is
+automatically assigned when establishing the link or using the configuration
+UUID\.
+.PP
+If the specified configuration path is relative, then it is rebased relative
+to the current configuration directory\. This way, when the linked
+configurations are moved around together, the stored relative paths remain
+valid\. If the specified directory path is absolute, then it is stored as
+absolute unless the \fB--relative\fR option is specified in which case it is
+also rebased relative to the current configuration directory\.
+.SH "CFG-LINK OPTIONS"
+.IP "\fB--name\fR \fIname\fR"
+Alternative link name\. If this option is not specified, then the
+configuration name is used as the link name (see \fBbpkg-cfg-create(1)\fP for
+details)\.
+.IP "\fB--relative\fR"
+Rebase the absolute linked configuration path relative to the current
+configuration directory\.
+.IP "\fB--directory\fR|\fB-d\fR \fIdir\fR"
+Assume configuration is in \fIdir\fR rather than in the current working
+directory\.
+.SH "COMMON OPTIONS"
+.PP
+The common options are summarized below with a more detailed description
+available in \fBbpkg-common-options(1)\fP\.
+.IP "\fB-v\fR"
+Print essential underlying commands being executed\.
+.IP "\fB-V\fR"
+Print all underlying commands being executed\.
+.IP "\fB--quiet\fR|\fB-q\fR"
+Run quietly, only printing error messages\.
+.IP "\fB--verbose\fR \fIlevel\fR"
+Set the diagnostics verbosity to \fIlevel\fR between 0 and 6\.
+.IP "\fB--stdout-format\fR \fIformat\fR"
+Representation format to use for printing to \fBstdout\fR\.
+.IP "\fB--jobs\fR|\fB-j\fR \fInum\fR"
+Number of jobs to perform in parallel\.
+.IP "\fB--no-result\fR"
+Don't print informational messages about the outcome of performing a command
+or some of its parts\.
+.IP "\fB--structured-result\fR \fIfmt\fR"
+Write the result of performing a command in a structured form\.
+.IP "\fB--progress\fR"
+Display progress indicators for long-lasting operations, such as network
+transfers, building, etc\.
+.IP "\fB--no-progress\fR"
+Suppress progress indicators for long-lasting operations, such as network
+transfers, building, etc\.
+.IP "\fB--diag-color\fR"
+Use color in diagnostics\.
+.IP "\fB--no-diag-color\fR"
+Don't use color in diagnostics\.
+.IP "\fB--build\fR \fIpath\fR"
+The build program to be used to build packages\.
+.IP "\fB--build-option\fR \fIopt\fR"
+Additional option to be passed to the build program\.
+.IP "\fB--fetch\fR \fIpath\fR"
+The fetch program to be used to download resources\.
+.IP "\fB--fetch-option\fR \fIopt\fR"
+Additional option to be passed to the fetch program\.
+.IP "\fB--fetch-timeout\fR \fIsec\fR"
+The fetch and fetch-like (for example, \fBgit\fR) program timeout\.
+.IP "\fB--pkg-proxy\fR \fIurl\fR"
+HTTP proxy server to use when fetching package manifests and archives from
+remote \fBpkg\fR repositories\.
+.IP "\fB--git\fR \fIpath\fR"
+The git program to be used to fetch git repositories\.
+.IP "\fB--git-option\fR \fIopt\fR"
+Additional common option to be passed to the git program\.
+.IP "\fB--sha256\fR \fIpath\fR"
+The sha256 program to be used to calculate SHA256 sums\.
+.IP "\fB--sha256-option\fR \fIopt\fR"
+Additional option to be passed to the sha256 program\.
+.IP "\fB--tar\fR \fIpath\fR"
+The tar program to be used to extract package archives\.
+.IP "\fB--tar-option\fR \fIopt\fR"
+Additional option to be passed to the tar program\.
+.IP "\fB--openssl\fR \fIpath\fR"
+The openssl program to be used for crypto operations\.
+.IP "\fB--openssl-option\fR \fIopt\fR"
+Additional option to be passed to the openssl program\.
+.IP "\fB--auth\fR \fItype\fR"
+Types of repositories to authenticate\.
+.IP "\fB--trust\fR \fIfingerprint\fR"
+Trust repository certificate with a SHA256 \fIfingerprint\fR\.
+.IP "\fB--trust-yes\fR"
+Assume the answer to all authentication prompts is \fByes\fR\.
+.IP "\fB--trust-no\fR"
+Assume the answer to all authentication prompts is \fBno\fR\.
+.IP "\fB--git-capabilities\fR \fIup\fR=\fIpc\fR"
+Protocol capabilities (\fIpc\fR) for a \fBgit\fR repository URL prefix
+(\fIup\fR)\.
+.IP "\fB--pager\fR \fIpath\fR"
+The pager program to be used to show long text\.
+.IP "\fB--pager-option\fR \fIopt\fR"
+Additional option to be passed to the pager program\.
+.IP "\fB--options-file\fR \fIfile\fR"
+Read additional options from \fIfile\fR\.
+.IP "\fB--default-options\fR \fIdir\fR"
+The directory to load additional default options files from\.
+.IP "\fB--no-default-options\fR"
+Don't load default options files\.
+.IP "\fB--keep-tmp\fR"
+Don't remove the \fBbpkg\fR's temporary directory at the end of the command
+execution and print its path at the verbosity level 2 or higher\.
+.SH "DEFAULT OPTIONS FILES"
+.PP
+See \fBbpkg-default-options-files(1)\fP for an overview of the default options
+files\. For the \fBcfg-link\fR command the search start directory is the
+configuration directory\. The following options files are searched for in each
+directory and, if found, loaded in the order listed:
+.PP
+.nf
+bpkg\.options
+bpkg-cfg-link\.options
+.fi
+.PP
+The following \fBcfg-link\fR command options cannot be specified in the
+default options files:
+.PP
+.nf
+--directory|-d
+.fi
+.SH BUGS
+Send bug reports to the users@build2.org mailing list.
+.SH COPYRIGHT
+Copyright (c) 2014-2024 the build2 authors.
+
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the MIT License.

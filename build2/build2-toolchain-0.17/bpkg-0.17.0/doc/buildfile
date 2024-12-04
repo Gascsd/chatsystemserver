@@ -1,0 +1,48 @@
+# file      : doc/buildfile
+# license   : MIT; see accompanying LICENSE file
+
+cmds =             \
+bpkg-cfg-create    \
+bpkg-cfg-info      \
+bpkg-cfg-link      \
+bpkg-cfg-unlink    \
+bpkg-help          \
+bpkg-pkg-build     \
+bpkg-pkg-checkout  \
+bpkg-pkg-clean     \
+bpkg-pkg-configure \
+bpkg-pkg-disfigure \
+bpkg-pkg-drop      \
+bpkg-pkg-fetch     \
+bpkg-pkg-install   \
+bpkg-pkg-purge     \
+bpkg-pkg-status    \
+bpkg-pkg-test      \
+bpkg-pkg-uninstall \
+bpkg-pkg-unpack    \
+bpkg-pkg-update    \
+bpkg-pkg-verify    \
+bpkg-rep-add       \
+bpkg-rep-create    \
+bpkg-rep-fetch     \
+bpkg-rep-info      \
+bpkg-rep-list      \
+bpkg-rep-remove
+
+define css: file
+css{*}: extension = css
+
+define xhtml: doc
+xhtml{*}: extension = xhtml
+
+./: {man1 xhtml}{bpkg bpkg-common-options bpkg-repository-signing    \
+                 bpkg-repository-types bpkg-argument-grouping        \
+                 bpkg-default-options-files $cmds}                   \
+    css{common pre-box man}                                          \
+    file{man-*}
+
+./: doc{build2-package-manager-manual*}  \
+    css{code-box common doc pre-box toc} \
+    file{manual.cli doc-* *.html2ps}
+
+./: file{cli.sh}

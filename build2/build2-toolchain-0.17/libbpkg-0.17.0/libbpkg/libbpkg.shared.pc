@@ -1,0 +1,10 @@
+Name: libbpkg
+Version: 0.17.0
+Description: build2 package dependency manager utility library
+URL: https://build2.org
+Cflags: -I/usr/local/include -DLIBBPKG_SHARED
+Libs: -L/usr/local/lib -lbpkg -lbutl
+
+build2.metadata = 1
+
+cc.type = cxx

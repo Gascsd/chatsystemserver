@@ -1,0 +1,15 @@
+# file      : build/bootstrap.build
+# license   : MIT; see accompanying LICENSE file
+
+project = build2
+
+# Force config module creation for meta-opeations other than configure so that
+# we can call $config.save() during perform update.
+#
+config.config.module = true
+
+using version
+using config
+using test
+using dist
+using install

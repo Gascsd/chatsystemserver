@@ -1,0 +1,113 @@
+# file      : tests/dir-iterator/testscript
+# license   : MIT; see accompanying LICENSE file
+
+test.options = -v
+
+: file
+:
+mkdir a;
+touch a/b;
+sleep 1;
+echo "a" >=a/b; # Change modification time.
+$* a >"reg     b"
+
+: dir
+:
+mkdir -p a/b;
+$* a >"dir     b"
+
+: symlink
+:
+: If we are not cross-testing let's test dangling and non-dangling symlynks.
+: On Windows that involves mklink command usability test. If we fail to create
+: a trial link (say because we are not in the Developer Mode and are running
+: non-elevated console), then the test group will be silently skipped.
+:
+if ($test.target == $build.host)
+{
+  +if ($cxx.target.class != 'windows')
+    lnf = [cmdline] ^ln -s t wd/l &wd/l
+    lnd = [cmdline] $lnf
+  else
+    echo 'yes' >=t
+    if cmd /C 'mklink l t' >- 2>- &?l && cat l >'yes'
+      lnf = [cmdline] cmd /C 'mklink wd\l t' &wd/l >-
+      lnd = [cmdline] cmd /C 'mklink /D wd\l t' &wd/l >-
+    end
+
+    jnc = [cmdline] cmd /C 'mklink /J wd\l wd\t' &wd/l >-
+  end
+
+  : symlink
+  :
+  if! $empty($lnf)
+  {
+    : file
+    :
+    {
+      +mkdir wd
+      +touch --no-cleanup wd/t
+      +touch wd/f
+      +$lnf
+      +$* wd >>~%EOO%
+        %(reg     f|reg     t|sym reg l)%{3}
+        EOO
+      +rm wd/t
+
+      $*    ../wd >- 2>! != 0 : keep
+      $* -i ../wd >'reg     f': skip
+
+      : detect
+      :
+      $* -d ../wd >>~%EOO%
+        %(reg     f|sym unk l)%{2}
+        EOO
+    }
+
+    : dir
+    :
+    {
+      +mkdir wd
+      +mkdir --no-cleanup wd/t
+      +mkdir wd/d
+      +$lnd
+      +$* wd >>~%EOO%
+        %(dir     d|dir     t|sym dir l)%{3}
+        EOO
+
+      +rmdir wd/t
+
+      $*    ../wd >- 2>! != 0 : keep
+      $* -i ../wd >'dir     d': skip
+
+      : detect
+      :
+      $* -d ../wd >>~%EOO%
+        %(dir     d|sym unk l)%{2}
+        EOO
+    }
+  }
+
+  : junction
+  :
+  if! $empty($jnc)
+  {
+    +mkdir wd
+    +mkdir --no-cleanup wd/t
+    +mkdir wd/d
+    +$jnc
+    +$* wd >>~%EOO%
+      %(dir     d|dir     t|sym dir l)%{3}
+      EOO
+    +rmdir wd/t
+
+    $*    ../wd >- 2>! != 0 : keep
+    $* -i ../wd >'dir     d': skip
+
+      : detect
+      :
+      $* -d ../wd >>~%EOO%
+        %(dir     d|sym unk l)%{2}
+        EOO
+  }
+}

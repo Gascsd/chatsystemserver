@@ -1,0 +1,4 @@
+# file      : tests/variable/scope-specific/buildfile
+# license   : MIT; see accompanying LICENSE file
+
+./: testscript $b

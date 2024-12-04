@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>bdep-argument-grouping(1) bdep 0.17.0</title>
+
+  <style type="text/css">
+/* file      : common.css
+ * license   : MIT; see accompanying LICENSE file
+ */
+
+html
+{
+  font-family: "Helvetica Neue", Helvetica, "Segoe UI", Arial, freesans, sans-serif;
+  font-weight: normal;
+  font-size: 18px;
+  line-height: 1.4em;
+  letter-spacing: 0.01em;
+
+  color: #292929;
+}
+
+body {margin: 0;} /* There is non-0 default margin for body. */
+
+/* See notes on what's going on here. */
+body {min-width: 17em;}
+@media only screen and (min-width: 360px)
+{
+  body {min-width: 19em;}
+}
+
+/*
+ * Header (optional).
+ */
+
+#header-bar
+{
+  width: 100%;
+
+  background: rgba(0, 0, 0, 0.04);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+
+  padding: .4em 0 .42em 0;
+  margin: 0 0 1.4em 0;
+}
+
+#header
+{
+  /* Same as in #content. */
+  max-width: 41em;
+  margin: 0 auto 0 auto;
+  padding: 0 .4em 0 .4em;
+
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+
+  width: 100%;
+  display: table;
+  border: none;
+  border-collapse: collapse;
+}
+
+#header-logo, #header-menu
+{
+  display: table-cell;
+  border: none;
+  padding: 0;
+  vertical-align: middle;
+}
+
+#header-logo {text-align: left;}
+#header-menu {text-align: right;}
+
+/* These overlap with #header's margin because of border collapsing. */
+#header-logo {padding-left: .4em;}
+#header-menu {padding-right: .4em;}
+
+#header-logo a
+{
+  color: #000;
+  text-decoration: none;
+  outline: none;
+}
+#header-logo a:visited {color: #000;}
+#header-logo a:hover, #header-logo a:active {color: #000;}
+
+#header-menu a
+{
+  font-size: 0.889em;
+  line-height: 1.4em;
+  text-align: right;
+  margin-left: 1.2em;
+  white-space: nowrap;
+  letter-spacing: 0;
+}
+
+#header-menu a
+{
+  color: #000;
+  outline: none;
+}
+#header-menu a:visited {color: #000;}
+#header-menu a:hover, #header-menu a:active
+{
+  color: #3870c0;
+  text-decoration: none;
+}
+
+/* Flexbox-based improvements though the above works reasonably well. */
+#header-menu-body
+{
+  width: 100%;
+
+  display: -webkit-inline-flex;
+  display: inline-flex;
+
+  -webkit-flex-flow: row wrap;
+  flex-flow: row wrap;
+
+  -webkit-justify-content: flex-end;
+  justify-content: flex-end;
+}
+
+/* Whether we want it (and at which point) depends on the size of the menu. */
+/*
+@media only screen and (max-width: 567px)
+{
+  #header-menu-body
+  {
+    -webkit-flex-direction: column;
+    flex-direction: column;
+  }
+}
+*/
+
+/*
+ * Content.
+ */
+
+#content
+{
+  max-width: 41em;
+  margin: 0 auto 0 auto;
+  padding: 0 .4em 0 .4em; /* Space between text and browser frame. */
+
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+}
+
+/*
+ * Footer (optional).
+ */
+
+#footer
+{
+  color: #767676;
+  font-size: 0.7223em;
+  line-height: 1.3em;
+  margin: 2.2em 0 1em 0;
+  text-align: center;
+}
+
+#footer a
+{
+  color: #767676;
+  text-decoration: underline;
+}
+#footer a:visited {color: #767676;}
+#footer a:hover, #footer a:active {color: #3870c0;}
+
+/* Screen size indicator in the footer. The before/after content is in case
+   we don't have any content in the footer. Margin is to actually see the
+   border separate from the browser frame. */
+
+/*
+#footer:before {content: "\A0";}
+#footer:after {content: "\A0";}
+
+#footer
+{
+  border-left: 1px solid;
+  border-right: 1px solid;
+  margin-left: 1px;
+  margin-right: 1px;
+}
+
+@media only screen and (max-width: 359px)
+{
+  #footer {border-color: red;}
+}
+
+@media only screen and (min-width: 360px) and (max-width: 567px)
+{
+  #footer {border-color: orange;}
+}
+
+@media only screen and (min-width: 568px) and (max-width: 1023px)
+{
+  #footer {border-color: blue;}
+}
+
+@media only screen and (min-width: 1024px)
+{
+  #footer {border-color: green;}
+}
+*/
+
+/*
+ * Common elements.
+ */
+
+p, li, dd {text-align: justify;}
+.code {text-align: left;} /* Manually aligned. */
+pre {text-align: left;}   /* If it is inside li/dd. */
+
+/* Notes. */
+
+.note
+{
+  color: #606060;
+}
+
+div.note
+{
+  margin: 2em 0 2em 0; /* The same top/bottom margings as pre box. */
+
+  padding-left: 0.5em;
+  border: 0.25em;
+  border-left-style: solid;
+  border-color: #808080;
+
+  page-break-inside: avoid;
+}
+
+div.note :first-child {margin-top:    0;}
+div.note :last-child  {margin-bottom: 0;}
+
+span.note::before {content: "[Note: "}
+span.note::after  {content: "]"}
+
+/* Links. */
+a
+{
+  color: #3870c0;
+  /*color: #4078c0;*/
+  text-decoration: none;
+}
+
+a:hover, a:active
+{
+/*color: #006fbf;*/
+/*color: #0087e7;*/
+  text-decoration: underline;
+}
+
+a:visited
+{
+/*color: #003388;*/
+  color: #00409c;
+}
+
+/* Standard paragraph. */
+
+p, pre {margin: 1em 0 1em 0;}
+
+/* Standard lists. */
+ul, ol, dl {margin: 1em 0 1em 0;}
+ul li, ol li {margin: 0 0 .4em 0;}
+ul li {list-style-type: circle;}
+dl dt {margin: 0 0 0 0;}
+dl dd {margin: 0 0 .6em 1.8em;}
+
+code, pre
+{
+  font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  font-size: 0.92em;
+  letter-spacing: 0;
+}
+
+pre {white-space: pre-wrap;}
+@media only screen and (max-width: 567px)
+{
+  pre {word-break: break-all;}
+}
+
+/* Use page rather than system font settings. */
+input
+{
+  font-family: inherit;
+  font-weight: inherit;
+  font-size:   inherit;
+  line-height: inherit;
+}
+
+/* file      : pre-box.css
+ * license   : MIT; see accompanying LICENSE file
+ */
+
+/* Note: see also p-code-box.css. */
+
+pre
+{
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 0.2em;
+  padding: .8em .4em .8em .4em;
+  margin: 2em -.4em 2em -.4em; /* Use margins of #content. */
+}
+
+/* file      : man.css
+ * license   : MIT; see accompanying LICENSE file
+ */
+
+/* Bases:
+ *
+ * common.css
+ * pre-box.css
+ *
+ */
+
+#content
+{
+  max-width: 42.1em;
+  padding-left: 1.5em; /* Reserve for the heading. */
+}
+
+h1
+{
+  font-weight: normal;
+  font-size: 1.58em;
+  line-height: 1.4em;
+  margin: 1.6em 0 .6em -.88em;
+}
+
+/* Definition list for options. */
+dl.options dt {margin: 1em 0 0 0;}
+dl.options dd {margin: .1em 0 0 4.5em;}
+
+/* Make lists inside option descriptions a tad smaller. */
+dl.options dd ul, dl.options dd ol, dl.options dd dl
+{
+  font-size: 0.889em;
+  line-height: 1.4em;
+}
+
+  </style>
+
+</head>
+<body>
+<div id="content">
+
+  <h1>NAME</h1>
+
+  <p><b><code>bdep-argument-grouping</code></b> &#8211; argument grouping facility</p>
+  <h1>SYNOPSIS</h1>
+
+  <p class="code"><code><b>bdep</b> <b>{</b> <i>options</i> <b>}+</b>
+  <i>argument</i> <b>+{</b> <i>options</i> <b>}</b></code></p>
+
+  <h1>DESCRIPTION</h1>
+
+  <p>For certain commands certain options and command line variables can be
+  grouped to only apply to specific arguments. This help topic describes the
+  argument grouping facility used for this purpose.</p>
+
+  <p>Groups can be specified before (leading) and/or after (trailing) the
+  argument they apply to. A leading group starts with '<code><b>{</b></code>'
+  and ends with '<code><b>}+</b></code>' while a trailing group starts with
+  '<code><b>+{</b></code>' and ends with '<code><b>}</b></code>'. For
+  example:</p>
+
+  <pre>{ --foo --bar }+ arg   # 'arg' with '--foo' '--bar'
+arg +{ fox=1 baz=2 }   # 'arg' with 'fox=1' 'baz=2'</pre>
+
+  <p>Multiple leading and/or trailing groups can be specified for the same
+  argument. For example:</p>
+
+  <pre>{ -f }+ { -b }+ arg +{ f=1 } +{ b=2 } # 'arg' with '-f' 'b' 'f=1' 'b=2'</pre>
+
+  <p>The group applies to a single argument only unless multiple arguments are
+  themselves grouped with '<code><b>{</b></code>' and '<code><b>}</b></code>'.
+  For example:</p>
+
+  <pre>{ --foo }+ arg1  arg2 +{ --bar }      # 'arg1' with '--foo'
+                                      # 'arg2' with '--bar'
+
+{ --foo }+ { arg1  arg2 } +{ --bar }  # 'arg1' with '--foo' '--bar'
+                                      # 'arg2' with '--foo' '--bar'</pre>
+
+  <p>The group separators ('<code><b>{</b></code>', '<code><b>}+'</b></code>,
+  etc) must be separate command line arguments. In particular, they must not
+  be adjacent either to the arguments inside the group nor to the argument
+  they apply to. All such cases will be treated as ordinary arguments. For
+  example:</p>
+
+  <pre>{--foo}+ arg   # '{--foo}+' ...
+arg+{ --foo }  # 'arg+{' ...</pre>
+
+  <p>If one of the group separators needs to be specified as an argument
+  verbatim, then it must be escaped with '<code><b>\</b></code>'. For
+  example:</p>
+
+  <pre>}             # error: unexpected group separator
+}x            # '}x'
+\}            # '}'
+{ \}+ }+ arg  # 'arg' with '}+'</pre>
+
+  <h1>BUGS</h1>
+
+  <p>Send bug reports to the
+  <a href="mailto:users@build2.org">users@build2.org</a> mailing list.</p>
+
+</div>
+
+<div id="footer">
+Copyright &#169; 2014-2024 the build2 authors.<br/>
+Permission is granted to copy, distribute and/or modify this document under
+the terms of the MIT License.
+</div>
+
+</body>
+</html>

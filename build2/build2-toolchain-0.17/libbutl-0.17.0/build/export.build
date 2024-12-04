@@ -1,0 +1,35 @@
+# file      : build/export.build
+# license   : MIT; see accompanying LICENSE file
+
+switch $name($import.target)
+{
+  case 'butl-odb'
+  {
+    $out_root/
+    {
+      include libbutl-odb/
+    }
+
+    export $out_root/libbutl-odb/$import.target
+  }
+
+  case 'butl-pkg-config'
+  {
+    $out_root/
+    {
+      include libbutl-pkg-config/
+    }
+
+    export $out_root/libbutl-pkg-config/$import.target
+  }
+
+  default
+  {
+    $out_root/
+    {
+      include libbutl/
+    }
+
+    export $out_root/libbutl/$import.target
+  }
+}

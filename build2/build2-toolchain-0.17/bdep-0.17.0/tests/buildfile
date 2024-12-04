@@ -1,0 +1,9 @@
+# file      : tests/buildfile
+# license   : MIT; see accompanying LICENSE file
+
+define common: file
+common{*}: extension = testscript
+
+commons = common project
+
+./: testscript{* -{$commons}} common{$commons} $bdep

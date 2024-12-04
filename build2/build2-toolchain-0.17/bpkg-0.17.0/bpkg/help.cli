@@ -1,0 +1,43 @@
+// file      : bpkg/help.cli
+// license   : MIT; see accompanying LICENSE file
+
+include <bpkg/common.cli>;
+
+"\section=1"
+"\name=bpkg-help"
+"\summary=show help for a command or help topic"
+
+namespace bpkg
+{
+  {
+    "<command> <topic>",
+
+    "\h|SYNOPSIS|
+
+     \c{\b{bpkg help} [<command> | <topic>]}
+
+     \h|DESCRIPTION|
+
+     Show the detailed help for <command> or help <topic> or a summary of
+     available commands and topics if none was specified."
+  }
+
+  class help_options: common_options
+  {
+    //"\h|HELP OPTIONS|"
+  };
+
+  "
+   \h|DEFAULT OPTIONS FILES|
+
+   See \l{bpkg-default-options-files(1)} for an overview of the default
+   options files. For the \cb{help} command the following options files are
+   searched for only in the predefined directories (home, system, etc) and, if
+   found, loaded in the order listed:
+
+   \
+   bpkg.options
+   bpkg-help.options
+   \
+  "
+}

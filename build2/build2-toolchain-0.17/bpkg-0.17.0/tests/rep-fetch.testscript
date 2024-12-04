@@ -1,0 +1,1035 @@
+# file      : tests/rep-fetch.testscript
+# license   : MIT; see accompanying LICENSE file
+
+.include common.testscript \
+         auth.testscript   \
+         config.testscript \
+         remote.testscript \
+         remote-git.testscript
+
+# Source repository:
+#
+# rep-fetch
+# |-- bar
+# |   |-- stable                  -> ../foo/stable (prerequisite)
+# |   |   |-- libbar-1.0.0.tar.gz -> libfoo >= 1.0.0
+# |   |   `-- repositories.manifest
+# |   |-- testing                 -> stable (complement),
+# |   |   |                          ../foo/testing (prerequisite)
+# |   |   |-- libbar-1.1.0.tar.gz -> libfoo >= 1.1.0
+# |   |   `-- repositories.manifest
+# |   `-- unstable                -> testing (complement),
+# |       |                          ../foo/testing (prerequisite)
+# |       |-- libbar-1.1.1.tar.gz  -> libfoo >= 1.1.0
+# |       `-- repositories.manifest
+# |
+# |-- foo
+# |   |-- stable
+# |   |   |-- libfoo-1.0.0.tar.gz
+# |   |   `-- repositories.manifest
+# |   `-- testing                 -> stable (complement)
+# |       |-- libfoo-1.1.0.tar.gz
+# |       `-- repositories.manifest
+# |
+# `-- hello
+# |   |-- libhello-1.0.0.tar.gz
+# |   `-- repositories.manifest
+# |
+# |-- libhello-1.0.0
+# |   |-- build
+# |   |   |-- bootstrap.build
+# |   |   |-- export.build
+# |   |   `-- root.build
+# |   `-- *
+# |
+# |-- cycle
+# |   |-- extra                     -> stable (prerequisite)
+# |   |   |-- libbar-1.1.0+1.tar.gz
+# |   |   `-- repositories.manifest
+# |   |-- math                      -> extra (prerequisite)
+# |   |   |-- libbar-1.0.0.tar.gz
+# |   |   `-- repositories.manifest
+# |   `-- stable                    -> math (prerequisite)
+# |       |-- libfoo-1.0.0.tar.gz
+# |       `-- repositories.manifest
+# |
+# |-- no-cycle
+# |   |-- extra
+# |   |   |-- libbar-1.1.0+1.tar.gz
+# |   |   `-- repositories.manifest
+# |   |-- math
+# |   |   |-- libbar-1.0.0.tar.gz
+# |   |   `-- repositories.manifest
+# |   `-- stable                    -> extra (prerequisite)
+# |       |-- libfoo-1.0.0.tar.gz
+# |       `-- repositories.manifest
+# |
+# `-- git/* (see rep-fetch-git.testscript)
+
+posix = ($cxx.target.class != 'windows')
+
+# Prepare repositories used by tests if running in the local mode.
+#
++if! $remote
+  rep_create += 2>!
+
+  # Create the signed 'hello' repository.
+  #
+  cp -r $src/hello $out/hello
+  cat <<<$cert_manifest >+$out/hello/repositories.manifest
+
+  $rep_create --key $key $out/hello &$out/hello/packages.manifest \
+                                    &$out/hello/signature.manifest
+
+  # Create 'foo/*' repositories.
+  #
+  cp -r $src/foo $out/foo
+
+  # Sign foo/stable repository.
+  #
+  cat <<<$cert_manifest >+$out/foo/stable/repositories.manifest
+  $rep_create --key $key $out/foo/stable &$out/foo/stable/packages.manifest \
+                                         &$out/foo/stable/signature.manifest
+
+  # Add dependent trust to foo complement repository into the foo/testing
+  # repository manifest.
+  #
+  tv = "trust: $cert_fp
+:"
+
+  sed -i -e "s/^\(:\)\$/$tv/" $out/foo/testing/repositories.manifest
+
+  $rep_create $out/foo/testing &$out/foo/testing/packages.manifest
+
+  # Create 'bar/*' repositories.
+  #
+  cp -r $src/bar $out/bar
+  $rep_create $out/bar/stable   &$out/bar/stable/packages.manifest
+  $rep_create $out/bar/testing  &$out/bar/testing/packages.manifest
+  $rep_create $out/bar/unstable &$out/bar/unstable/packages.manifest
+
+  # Create 'cycle/*' repositories.
+  #
+  cp -r $src/cycle $out/cycle
+  $rep_create $out/cycle/extra  &$out/cycle/extra/packages.manifest
+  $rep_create $out/cycle/math   &$out/cycle/math/packages.manifest
+  $rep_create $out/cycle/stable &$out/cycle/stable/packages.manifest
+
+  # Create git repositories.
+  #
+  $git_extract $src/git/state0/libfoo.tar
+  $git_extract $src/git/state0/libfox.tar
+  $git_extract $src/git/state0/libbar.tar
+  $git_extract $src/git/state0/style.tar
+  $git_extract $src/git/state0/style-basic.tar &$out_git/state0/***
+
+  $git_extract $src/git/state1/libfoo.tar
+  $git_extract $src/git/state1/libbaz.tar
+  $git_extract $src/git/state1/style.tar
+  $git_extract $src/git/state1/style-basic.tar &$out_git/state1/***
+end
+
+rep_add      += -d cfg 2>!
+rep_list     += -d cfg --prerequisites --complements
+rep_remove   += -d cfg 2>!
+pkg_status   += -d cfg
+pkg_fetch    += -d cfg 2>!
+pkg_unpack   += -d cfg 2>!
+pkg_checkout += -d cfg
+pkg_purge    += -d cfg
+pkg_drop     += -d cfg --yes 2>!
+
+: no-repos
+:
+$clone_cfg;
+$* 2>>/EOE != 0
+  error: configuration cfg/ has no repositories
+    info: use 'bpkg rep-add' to add a repository
+  EOE
+
+: pkg-rep
+:
+{
+  test.options += --auth all
+
+  : hello
+  :
+  {
+    $clone_root_cfg && $rep_add $rep/hello;
+
+    $* --trust $cert_fp 2>>EOE &cfg/.bpkg/certs/**;
+      fetching pkg:build2.org/rep-fetch/hello
+      1 package(s) in 1 repository(s)
+      EOE
+
+    $* 2>>EOE
+      fetching pkg:build2.org/rep-fetch/hello
+      1 package(s) in 1 repository(s)
+      EOE
+  }
+
+  : bar-unstable
+  :
+  {
+    $clone_root_cfg && $rep_add $rep/bar/unstable;
+
+    $* --trust-yes 2>>EOE &cfg/.bpkg/certs/**;
+      fetching pkg:build2.org/rep-fetch/bar/unstable
+      fetching pkg:build2.org/rep-fetch/bar/testing (complements pkg:build2.org/rep-fetch/bar/unstable)
+      fetching pkg:build2.org/rep-fetch/bar/stable (complements pkg:build2.org/rep-fetch/bar/testing)
+      fetching pkg:build2.org/rep-fetch/foo/stable (prerequisite of pkg:build2.org/rep-fetch/bar/stable)
+      fetching pkg:build2.org/rep-fetch/foo/testing (prerequisite of pkg:build2.org/rep-fetch/bar/testing)
+      5 package(s) in 5 repository(s)
+      EOE
+
+    $* 2>>EOE
+      fetching pkg:build2.org/rep-fetch/bar/unstable
+      fetching pkg:build2.org/rep-fetch/bar/testing (complements pkg:build2.org/rep-fetch/bar/unstable)
+      fetching pkg:build2.org/rep-fetch/bar/stable (complements pkg:build2.org/rep-fetch/bar/testing)
+      fetching pkg:build2.org/rep-fetch/foo/stable (prerequisite of pkg:build2.org/rep-fetch/bar/stable)
+      fetching pkg:build2.org/rep-fetch/foo/testing (prerequisite of pkg:build2.org/rep-fetch/bar/testing)
+      5 package(s) in 5 repository(s)
+      EOE
+  }
+
+  : both
+  :
+  {
+    $clone_root_cfg && $rep_add $rep/hello $rep/bar/unstable;
+
+    $* --trust-yes 2>>EOE &cfg/.bpkg/certs/**;
+      fetching pkg:build2.org/rep-fetch/bar/unstable
+      fetching pkg:build2.org/rep-fetch/bar/testing (complements pkg:build2.org/rep-fetch/bar/unstable)
+      fetching pkg:build2.org/rep-fetch/bar/stable (complements pkg:build2.org/rep-fetch/bar/testing)
+      fetching pkg:build2.org/rep-fetch/foo/stable (prerequisite of pkg:build2.org/rep-fetch/bar/stable)
+      fetching pkg:build2.org/rep-fetch/foo/testing (prerequisite of pkg:build2.org/rep-fetch/bar/testing)
+      fetching pkg:build2.org/rep-fetch/hello
+      6 package(s) in 6 repository(s)
+      EOE
+
+    $* 2>>EOE
+      fetching pkg:build2.org/rep-fetch/bar/unstable
+      fetching pkg:build2.org/rep-fetch/bar/testing (complements pkg:build2.org/rep-fetch/bar/unstable)
+      fetching pkg:build2.org/rep-fetch/bar/stable (complements pkg:build2.org/rep-fetch/bar/testing)
+      fetching pkg:build2.org/rep-fetch/foo/stable (prerequisite of pkg:build2.org/rep-fetch/bar/stable)
+      fetching pkg:build2.org/rep-fetch/foo/testing (prerequisite of pkg:build2.org/rep-fetch/bar/testing)
+      fetching pkg:build2.org/rep-fetch/hello
+      6 package(s) in 6 repository(s)
+      EOE
+  }
+
+  : location-args
+  :
+  {
+    $clone_root_cfg;
+
+    $* --trust-yes $rep/bar/unstable 2>>EOE &cfg/.bpkg/certs/**;
+      added pkg:build2.org/rep-fetch/bar/unstable
+      fetching pkg:build2.org/rep-fetch/bar/testing (complements pkg:build2.org/rep-fetch/bar/unstable)
+      fetching pkg:build2.org/rep-fetch/bar/stable (complements pkg:build2.org/rep-fetch/bar/testing)
+      fetching pkg:build2.org/rep-fetch/foo/stable (prerequisite of pkg:build2.org/rep-fetch/bar/stable)
+      fetching pkg:build2.org/rep-fetch/foo/testing (prerequisite of pkg:build2.org/rep-fetch/bar/testing)
+      5 package(s) in 5 repository(s)
+      EOE
+
+    $* 'pkg:build2.org/rep-fetch/bar/unstable' 2>>EOE;
+      fetching pkg:build2.org/rep-fetch/bar/testing (complements pkg:build2.org/rep-fetch/bar/unstable)
+      fetching pkg:build2.org/rep-fetch/bar/stable (complements pkg:build2.org/rep-fetch/bar/testing)
+      fetching pkg:build2.org/rep-fetch/foo/stable (prerequisite of pkg:build2.org/rep-fetch/bar/stable)
+      fetching pkg:build2.org/rep-fetch/foo/testing (prerequisite of pkg:build2.org/rep-fetch/bar/testing)
+      5 package(s) in 5 repository(s)
+      EOE
+
+    $rep_list >>"EOO"
+      pkg:build2.org/rep-fetch/bar/unstable ($rep/bar/unstable)
+        complement pkg:build2.org/rep-fetch/bar/testing ($rep/bar/testing)
+          complement pkg:build2.org/rep-fetch/bar/stable ($rep/bar/stable)
+            prerequisite pkg:build2.org/rep-fetch/foo/stable ($rep/foo/stable)
+          prerequisite pkg:build2.org/rep-fetch/foo/testing ($rep/foo/testing)
+            complement pkg:build2.org/rep-fetch/foo/stable ($rep/foo/stable)
+        prerequisite pkg:build2.org/rep-fetch/foo/testing ($rep/foo/testing)
+          complement pkg:build2.org/rep-fetch/foo/stable ($rep/foo/stable)
+      EOO
+  }
+
+  : prerequisites-cycle
+  :
+  {
+    $clone_root_cfg;
+
+    $* --trust-yes $rep/cycle/stable 2>>EOE;
+      added pkg:build2.org/rep-fetch/cycle/stable
+      fetching pkg:build2.org/rep-fetch/cycle/math (prerequisite of pkg:build2.org/rep-fetch/cycle/stable)
+      fetching pkg:build2.org/rep-fetch/cycle/extra (prerequisite of pkg:build2.org/rep-fetch/cycle/math)
+      3 package(s) in 3 repository(s)
+      EOE
+
+    $rep_list >>"EOO"
+      pkg:build2.org/rep-fetch/cycle/stable ($rep/cycle/stable)
+        prerequisite pkg:build2.org/rep-fetch/cycle/math ($rep/cycle/math)
+          prerequisite pkg:build2.org/rep-fetch/cycle/extra ($rep/cycle/extra)
+            prerequisite pkg:build2.org/rep-fetch/cycle/stable ($rep/cycle/stable)
+      EOO
+  }
+
+  : unreferenced-prerequisite
+  :
+  {
+    +$clone_root_cfg
+
+    # Create the no-cycle repository as the new state of the cycle repository.
+    # The cycle dependency is now broken (extra/ doesn't depend on stable/
+    # anymore) and the extra/ prerequisite is moved from math/ to stable/.
+    #
+    nc_rep = [dir_path] $~/pkg/1/build2.org/rep-fetch/cycle/
+    +mkdir -p $path.directory($nc_rep)
+    +cp -r $src/no-cycle "$nc_rep"     # Strip trailing slash.
+
+    +$rep_create $nc_rep/extra  2>! &$nc_rep/extra/packages.manifest
+    +$rep_create $nc_rep/math   2>! &$nc_rep/math/packages.manifest
+    +$rep_create $nc_rep/stable 2>! &$nc_rep/stable/packages.manifest
+
+    math_rep   = $nc_rep/math
+    stable_rep = $nc_rep/stable
+
+    : remove
+    :
+    {
+      $clone_cfg;
+
+      $* --trust-yes $rep/cycle/stable 2>>EOE;
+        added pkg:build2.org/rep-fetch/cycle/stable
+        fetching pkg:build2.org/rep-fetch/cycle/math (prerequisite of pkg:build2.org/rep-fetch/cycle/stable)
+        fetching pkg:build2.org/rep-fetch/cycle/extra (prerequisite of pkg:build2.org/rep-fetch/cycle/math)
+        3 package(s) in 3 repository(s)
+        EOE
+
+      $* --trust-yes $stable_rep 2>>EOE;
+        updated pkg:build2.org/rep-fetch/cycle/stable
+        fetching pkg:build2.org/rep-fetch/cycle/extra (prerequisite of pkg:build2.org/rep-fetch/cycle/stable)
+        2 package(s) in 2 repository(s)
+        EOE
+
+      $rep_list >>"EOO"
+        pkg:build2.org/rep-fetch/cycle/stable ($nc_rep/stable)
+          prerequisite pkg:build2.org/rep-fetch/cycle/extra ($nc_rep/extra)
+        EOO
+    }
+
+    : no-remove
+    :
+    {
+      $clone_cfg;
+
+      $* --trust-yes $rep/cycle/stable 2>>EOE;
+        added pkg:build2.org/rep-fetch/cycle/stable
+        fetching pkg:build2.org/rep-fetch/cycle/math (prerequisite of pkg:build2.org/rep-fetch/cycle/stable)
+        fetching pkg:build2.org/rep-fetch/cycle/extra (prerequisite of pkg:build2.org/rep-fetch/cycle/math)
+        3 package(s) in 3 repository(s)
+        EOE
+
+      $* --trust-yes $math_rep $stable_rep 2>>EOE;
+        added pkg:build2.org/rep-fetch/cycle/math
+        updated pkg:build2.org/rep-fetch/cycle/stable
+        fetching pkg:build2.org/rep-fetch/cycle/math
+        fetching pkg:build2.org/rep-fetch/cycle/stable
+        fetching pkg:build2.org/rep-fetch/cycle/extra (prerequisite of pkg:build2.org/rep-fetch/cycle/stable)
+        3 package(s) in 3 repository(s)
+        EOE
+
+      $rep_list >>"EOO"
+        pkg:build2.org/rep-fetch/cycle/math ($nc_rep/math)
+        pkg:build2.org/rep-fetch/cycle/stable ($nc_rep/stable)
+          prerequisite pkg:build2.org/rep-fetch/cycle/extra ($nc_rep/extra)
+        EOO
+    }
+  }
+
+  : use-auth
+  :
+  {
+    : dependent-trust
+    :
+    : Test that the certificate of foo/stable complement repository is
+    : silently authenticated for use by the dependent foo/testing repository.
+    : In this case the certificate is not saved into the database (see the
+    : subsequent 'rep-fetch $rep/foo/stable' test) and certificate file is not
+    : persisted (otherwise cleanup of non-empty cfg/ directory would fail).
+    :
+    {
+      $clone_root_cfg;
+
+      $* -v $rep/foo/testing <'y' 2>>~%EOE%;
+        added pkg:build2.org/rep-fetch/foo/testing
+        %.*
+        warning: repository pkg:build2.org/rep-fetch/foo/testing is unsigned
+        %continue without authenticating repositories at .+\? \[y/n\] .+%
+        %.+
+        info: certificate for repository pkg:build2.org/rep-fetch/foo/stable authenticated by dependent trust
+        %.+
+        2 package(s) in 2 repository(s)
+        EOE
+
+      $* $rep/foo/stable 2>>~%EOE% != 0
+        %.+
+        warning: authenticity of the certificate for repository pkg:build2.org/rep-fetch/foo/stable cannot be established
+        %.+
+        EOE
+    }
+
+    : dependent-command-line
+    :
+    : Test that the certificate of foo/stable complement repository is
+    : authenticated for use by the command line (persisted into the database
+    : and the filesystem) rather than dependent trust.
+    :
+    {
+      $clone_root_cfg;
+
+      $* -v --trust $cert_fp $rep/foo/testing <'y' 2>>~%EOE% &cfg/.bpkg/certs/**
+        added pkg:build2.org/rep-fetch/foo/testing
+        %.*
+        warning: repository pkg:build2.org/rep-fetch/foo/testing is unsigned
+        %continue without authenticating repositories at .+\? \[y/n\] .+%
+        %.+
+        info: certificate for repository pkg:build2.org/rep-fetch/foo/stable authenticated by command line
+        %.+
+        2 package(s) in 2 repository(s)
+        EOE
+    }
+
+    : dependent-trust-prompt
+    :
+    : Test that the certificate of foo/stable repository is first authenticated
+    : for use by the dependent foo/test repository and then by the user (via
+    : the prompt) as a top-level repository during a single rep-fetch
+    : operation.
+    :
+    {
+      yy = 'y
+y'
+      $clone_root_cfg;
+
+      $* -v $rep/foo/testing $rep/foo/stable <$yy 2>>~%EOE% &cfg/.bpkg/certs/**
+        added pkg:build2.org/rep-fetch/foo/testing
+        added pkg:build2.org/rep-fetch/foo/stable
+        fetching pkg:build2.org/rep-fetch/foo/testing
+        %.*
+        warning: repository pkg:build2.org/rep-fetch/foo/testing is unsigned
+        %continue without authenticating repositories at .+\? \[y/n\] .+%
+        %.+
+        info: certificate for repository pkg:build2.org/rep-fetch/foo/stable authenticated by dependent trust
+        %.+
+        warning: authenticity of the certificate for repository pkg:build2.org/rep-fetch/foo/stable cannot be established
+        certificate is for build2.org, "Code Synthesis" <info@build2.org>
+        %.+
+        %.+2 package\(s\) in 2 repository\(s\)%
+        EOE
+    }
+
+    : command-line-dependent-noop
+    :
+    : Test that the certificate of foo/stable repository is first authenticated
+    : by the user (via the command line) as a top-level repository and so
+    : authentication for use by the dependent foo/test is noop.
+    :
+    {
+      $clone_root_cfg;
+
+      $* -v --trust $cert_fp $rep/foo/stable $rep/foo/testing <'y' 2>>~%EOE% &cfg/.bpkg/certs/**
+        added pkg:build2.org/rep-fetch/foo/stable
+        added pkg:build2.org/rep-fetch/foo/testing
+        fetching pkg:build2.org/rep-fetch/foo/stable
+        %.+
+        info: certificate for repository pkg:build2.org/rep-fetch/foo/stable authenticated by command line
+        %.+
+        fetching pkg:build2.org/rep-fetch/foo/testing
+        %.*
+        warning: repository pkg:build2.org/rep-fetch/foo/testing is unsigned
+        %continue without authenticating repositories at .+\? \[y/n\] .+%
+        %.*
+        2 package(s) in 2 repository(s)
+        EOE
+    }
+  }
+}
+
+: dir-rep
+:
+: For dir repository tests we will reuse local git repositories, that have the
+: same repository structure.
+:
+if! $remote
+{
+  rep_add += --type dir
+
+  +cp -r $out_git/state0 $~/state0
+
+  rep = $canonicalize([dir_path] $~/state0)
+
+  +cat <<EOI >= $rep/libbar.git/repositories.manifest
+     : 1
+     role: prerequisite
+     type: dir
+     location: ../style-basic.git
+     EOI
+
+  +$clone_cfg && $rep_add $rep/libbar.git
+
+  d = $canonicalize($rep)
+
+  # Note that on Windows the local repository canonical name path part is
+  # converted to lower case.
+  #
+  if! $posix
+    d = [dir_path] $string.lcase($d)
+  end
+
+  : prerequisites
+  :
+  {
+    $clone_cfg;
+
+    $* 2>>"EOE";
+      fetching dir:($d/libbar.git)
+      fetching dir:($d/style-basic.git) \(prerequisite of dir:($d/libbar.git)\)
+      3 package\(s\) in 2 repository\(s\)
+      EOE
+
+    $rep_list >>~%EOO%
+      %dir:.+libbar\.git dir\+file:///.+libbar\.git%
+      %  prerequisite dir:.+style-basic\.git dir\+file:///.+style-basic\.git%
+      EOO
+  }
+
+  : by-name
+  :
+  : Here we, in particular, test that the local repository canonical name
+  : (dir:/...) is not confused with the repository URL.
+  :
+  {
+    $clone_cfg;
+    $* 2>!;
+
+    $* "dir:($d/libbar.git)" 2>>"EOE";
+      fetching dir:($d/style-basic.git) \(prerequisite of dir:($d/libbar.git)\)
+      3 package\(s\) in 2 repository\(s\)
+      EOE
+
+    $rep_list >>~%EOO%
+      %dir:.+libbar\.git dir\+file:///.+libbar\.git%
+      %  prerequisite dir:.+style-basic\.git dir\+file:///.+style-basic\.git%
+      EOO
+  }
+
+  : shallow
+  :
+  {
+    +$clone_cfg
+
+    : respected
+    :
+    {
+      $clone_cfg;
+      $* 2>!;
+
+      $* --shallow "dir:($d/libbar.git)" 2>>"EOE";
+        3 package\(s\) in 2 repository\(s\)
+        EOE
+
+      $rep_list >>~%EOO%
+        %dir:.+libbar\.git dir\+file:///.+libbar\.git%
+        %  prerequisite dir:.+style-basic\.git dir\+file:///.+style-basic\.git%
+        EOO
+    }
+
+    : ignored
+    :
+    {
+      $clone_cfg;
+
+      $* --shallow 2>>"EOE";
+        fetching dir:($d/libbar.git)
+        fetching dir:($d/style-basic.git) \(prerequisite of dir:($d/libbar.git)\)
+        3 package\(s\) in 2 repository\(s\)
+        EOE
+
+      $rep_list >>~%EOO%
+        %dir:.+libbar\.git dir\+file:///.+libbar\.git%
+        %  prerequisite dir:.+style-basic\.git dir\+file:///.+style-basic\.git%
+        EOO
+    }
+  }
+}
+
+: iter
+:
+{
+  rep_add += --type dir
+
+  : multiple-repos
+  :
+  {
+    cp -r $src/libhello-1.0.0 libhello1;
+    cp -r $src/libhello-1.0.0 libhello2;
+
+    $clone_root_cfg && $rep_add libhello1 libhello2;
+
+    $* 2>>~%EOE% != 0
+      %fetching dir:.+libhello1%
+      %fetching dir:.+libhello2%
+      error: external package libhello/1.0.0 is available from two repositories
+      %  info: repository .+libhello1%
+      %  info: repository .+libhello2%
+      EOE
+  }
+
+  : inc
+  :
+  {
+    : path-changed
+    :
+    {
+      $clone_root_cfg && $rep_add $src/libhello-1.0.0;
+
+      $* 2>!;
+      $pkg_unpack libhello/1.0.0;
+
+      $rep_remove --all;
+
+      cp -r $src/libhello-1.0.0 libhello;
+      $rep_add libhello;
+
+      $* 2>!;
+
+      $pkg_status libhello >'libhello unpacked 1.0.0 available 1.0.0#1'
+    }
+
+    : manifest-changed
+    :
+    {
+      cp -r $src/libhello-1.0.0 libhello;
+
+      $clone_root_cfg && $rep_add libhello;
+
+      $* 2>!;
+      $pkg_unpack libhello/1.0.0;
+
+      echo "" >+ libhello/manifest;
+      $* 2>!;
+
+      $pkg_status libhello >'libhello unpacked 1.0.0 available 1.0.0#1'
+    }
+
+    : pkg-rep
+    {
+      +$clone_root_cfg
+
+      +$* --auth all --trust-yes $rep/hello &cfg/.bpkg/certs/** 2>!
+      +$pkg_fetch  libhello/1.0.0
+      +$pkg_unpack libhello
+
+      : unchanged-external
+      :
+      : Test that iteration is still incremented when a non-external package
+      : from a pkg repository is switched to the same unedited external
+      : package.
+      :
+      {
+        $clone_cfg && $rep_add $src/libhello-1.0.0;
+        $* 2>!;
+
+        $pkg_status libhello >'libhello unpacked 1.0.0 available 1.0.0#1'
+      }
+
+      : changed-external
+      :
+      {
+        cp -r $src/libhello-1.0.0 libhello;
+        echo "" >+ libhello/manifest;
+
+        $clone_cfg && $rep_add libhello;
+        $* 2>!;
+
+        $pkg_status libhello >'libhello unpacked 1.0.0 available 1.0.0#1'
+      }
+
+      -$pkg_purge libhello 2>'purged libhello/1.0.0'
+    }
+
+    : git-rep
+    :
+    : Test that iteration is still incremented when a non-external package
+    : from a git repository is switched to the same unedited external package.
+    :
+    if ($git_supported && !$remote)
+    {
+      rep = $canonicalize([dir_path] $out_git/state0);
+
+      $clone_root_cfg;
+
+      $* "$rep/style.git#master" 2>! &cfg/.bpkg/repos/*/***;
+
+      $pkg_checkout "style/1.0.0" 2>!;
+
+      $rep_add $rep/style.git;
+      $* 2>!;
+
+      $pkg_status style >"style unpacked 1.0.0 available 1.0.0#1";
+
+      $pkg_purge style 2>"purged style/1.0.0"
+    }
+  }
+
+  : no-inc
+  :
+  {
+    $clone_root_cfg;
+
+    $pkg_unpack -e $src/libhello-1.0.0;
+
+    $rep_add $src/libhello-1.0.0;
+
+    $* 2>>~%EOE%;
+      %fetching dir:.+libhello-1.0.0%
+      1 package(s) in 1 repository(s)
+      EOE
+
+    $pkg_status libhello >'libhello unpacked 1.0.0'
+  }
+}
+
+: git-rep
+:
+if! $git_supported
+{
+  # Skip git repository tests.
+  #
+}
+else
+{
+  : proto
+  :
+  if! $remote
+  {
+    git_protocol = 'local'
+    .include rep-fetch-git.testscript
+  }
+  else
+  {
+    : https-dumb
+    :
+    {
+      git_protocol = 'https-dumb'
+      .include rep-fetch-git.testscript
+    }
+
+    : https-smart
+    :
+    {
+      git_protocol = 'https-smart'
+      .include rep-fetch-git.testscript
+    }
+
+    : https-smart-unadv
+    :
+    {
+      git_protocol = 'https-smart-unadv'
+      .include rep-fetch-git.testscript
+    }
+
+    : git
+    :
+    {
+      git_protocol = 'git'
+      .include rep-fetch-git.testscript
+    }
+
+    : git-unadv
+    :
+    {
+      git_protocol = 'git-unadv'
+      .include rep-fetch-git.testscript
+    }
+
+    : ssh
+    :
+    if $git_ssh
+    {
+      git_protocol = 'ssh'
+      .include rep-fetch-git.testscript
+    }
+
+    : ssh-unadv
+    :
+    if $git_ssh
+    {
+      git_protocol = 'ssh-unadv'
+      .include rep-fetch-git.testscript
+    }
+  }
+
+  : strip-ext
+  :
+  : Test that if the local prerequisite git repository having the .git
+  : extension does not exist but the one without the extension does, then
+  : it is picked up by rep-fetch.
+  :
+  if! $remote
+  {
+    cp -r $out_git/state0/libbar.git libbar.git;
+    cp -r $out_git/state0/style-basic.git style-basic;
+
+    $clone_root_cfg;
+
+    rep = ($posix \
+           ? "file:$~" \
+           : "file:/$regex.replace($~, '\\', '/')");
+
+    rep = "$regex.replace($rep, ' ', '%20')";
+
+    $* "$rep/libbar.git#master" 2>>~%EOE% &cfg/.bpkg/repos/*/***;
+      %added git:.+libbar#master%
+      %querying .+libbar\.git%
+      %fetching from .+libbar\.git%
+      %fetching git:.+style-basic#stable \(prerequisite of git:.+libbar#master\)%
+      %querying .+style-basic%
+      %fetching from .+style-basic%
+      3 package(s) in 2 repository(s)
+      EOE
+
+    $rep_list >>~%EOO%
+      %git:.+libbar#master file:.+libbar\.git#master%
+      %  prerequisite git:.+style-basic#stable git\+file:.+style-basic#stable \(heads/master\)%
+      EOO
+  }
+
+  : checkout-submodules
+  :
+  : Test that if some of the packages are located in the repository
+  : submodules directory, then rep-fetch checks out submoodules.
+  :
+  {
+    $clone_root_cfg && $rep_add "$rep_git/state0/libfox.git#master";
+
+    $* 2>>~%EOE% &cfg/.bpkg/repos/*/***
+      %fetching git:.+libfox#master%
+      %querying .+libfox\.git%
+      %fetching from .+libfox\.git%
+      %info: .+%{0,2}
+      %querying .+libbar\.git%?
+      %fetching submodule 'libbar' from .+libbar\.git%
+      %info: .+%{0,2}
+      %submodule path 'libbar': checked out '.+'%
+      %querying .+style-basic\.git%?
+      %fetching submodule 'libbar/extras' from .+style-basic\.git%
+      %info: .+%{0,2}
+      %submodule path 'libbar/extras': checked out '.+'%
+      2 package(s) in 1 repository(s)
+      EOE
+  }
+
+  : re-fetching
+  :
+  : Test that repository is re-fetched on the location change. Here it happens
+  : due to the scheme change.
+  :
+  if $remote
+  {
+    $clone_root_cfg && $rep_add "$rep_git_git/state0/libfoo.git#master";
+    $* 2>! &cfg/.bpkg/repos/*/***;
+    $rep_add "$rep_git_https_smart/state0/libfoo.git#master";
+
+    $* 2>>~%EOE%
+      %fetching git:.+libfoo#master%
+      %info: location changed for git:.+libfoo#master%
+      %  info: new location https://.+libfoo\.git#master%
+      %  info: old location git://.+libfoo\.git#master%
+      %querying .+libfoo\.git%
+      1 package(s) in 1 repository(s)
+      EOE
+  }
+
+  : cleanup-failed
+  :
+  : Test that configuration is cleaned up if fetch fails after the repository
+  : filesystem state is changed.
+  :
+  {
+    $clone_root_cfg && $rep_add "$rep_git/state0/libfoo.git#master";
+
+    # Extract the repository path from the output line like this:
+    #
+    # fetching from <url> in 'cfg/.bpkg/tmp/4bde15f59461'...
+    #
+    $* -v 2>&1                                         | \
+      sed -n -e "s/fetching from .+ in '\(.+\)'/\$1/p" | \
+      sed -n -e 's%(.+[\\/])tmp([\\/].+)%$1repos$2%p'  | \
+      set r;
+
+    # Break the repo (drop the remote repository URL) and try to re-fetch.
+    #
+    rm "$r/.git/config";
+
+    $* 2>>~%EOE% != 0;
+      %.+
+      warning: repository state is now broken and will be cleaned up
+        info: run 'bpkg rep-fetch' to update
+      EOE
+
+    $pkg_status libfoo >'libfoo unknown'
+  }
+
+  : ref-filters
+  :
+  {
+    test.cleanups += &?cfg/.bpkg/repos/*/***
+
+    : pattern
+    :
+    {
+      : matching
+      :
+      {
+        $clone_root_cfg;
+
+        $* "$rep_git/state0/libfoo.git#v**" 2>>~%EOE%
+          %added .+libfoo#v\*\*%
+          %querying .+libfoo\.git%
+          %fetching from .+libfoo\.git%
+          %info: .+%{0,2}
+          2 package(s) in 1 repository(s)
+          EOE
+      }
+
+      : non-matching
+      :
+      {
+        $clone_root_cfg;
+
+        $* "$rep_git/state0/libfoo.git#tags/mast*" 2>>~%EOE%
+          %added .+libfoo#tags/mast\*%
+          %querying .+libfoo\.git%
+          0 package(s) in 1 repository(s)
+          EOE
+      }
+    }
+
+    : name
+    :
+    {
+      : non-matching
+      :
+      {
+        $clone_root_cfg;
+
+        $* "$rep_git/state0/libfoo.git#foo" 2>>~%EOE% != 0
+          %added .+libfoo#foo%
+          %querying .+libfoo\.git%
+          error: reference 'foo' is not found
+          EOE
+      }
+    }
+
+    : commit
+    :
+    {
+      : non-matching-pattern
+      :
+      {
+        $clone_root_cfg;
+
+        $* "$rep_git/state0/libfoo.git#foo*@9ab039761936802d61b8e591d6812a4dd4605029" 2>>~%EOE% != 0
+          %added .+libfoo#foo\*@9ab039761936802d61b8e591d6812a4dd4605029%
+          %querying .+libfoo\.git%
+          error: no names match pattern 'foo*'
+          EOE
+      }
+
+      : unexisting
+      :
+      {
+        $clone_root_cfg;
+
+        $* "$rep_git/state0/libfoo.git#9ab039761936802d61b8e591d6812a4dd4605029" 2>>~%EOE% != 0
+          %added .+libfoo#9ab039761936802d61b8e591d6812a4dd4605029%
+          %querying .+libfoo\.git%
+          %fetching from .+libfoo\.git%
+          %info: .+%{0,2}
+          error: unable to fetch commit 9ab039761936802d61b8e591d6812a4dd4605029
+          EOE
+      }
+    }
+
+    : exclusion
+    :
+    {
+      $clone_root_cfg;
+
+      $* "$rep_git/state0/libfoo.git#mast*,-master" 2>>~%EOE%
+        %added .+libfoo#mast\*,-master%
+        %querying .+libfoo\.git%
+        0 package(s) in 1 repository(s)
+        EOE
+    }
+
+    : inclusion
+    :
+    {
+      $clone_root_cfg;
+
+      $* "$rep_git/state0/libfoo.git#tags/mast*,+master" 2>>~%EOE%
+        %added .+libfoo#tags/mast\*,\+master%
+        %querying .+libfoo\.git%
+        %fetching from .+libfoo\.git%
+        %info: .+%{0,2}
+        1 package(s) in 1 repository(s)
+        EOE
+    }
+
+    : default
+    :
+    {
+      : no-fragment
+      :
+      {
+        $clone_root_cfg;
+
+        $* "$rep_git/state0/libfoo.git" 2>>~%EOE%
+          %added .+libfoo%
+          %querying .+libfoo\.git%
+          %fetching from .+libfoo\.git%
+          %info: .+%{0,2}
+          2 package(s) in 1 repository(s)
+          EOE
+      }
+
+      : with-exclusion
+      :
+      {
+        $clone_root_cfg;
+
+        $* "$rep_git/state0/libfoo.git##-/tags/v1*" 2>>~%EOE%
+          %added .+libfoo##-/tags/v1\*%
+          %querying .+libfoo\.git%
+          %fetching from .+libfoo\.git%
+          %info: .+%{0,2}
+          1 package(s) in 1 repository(s)
+          EOE
+      }
+
+      : latest-revision
+      :
+      {
+        $clone_root_cfg;
+
+        $* "$rep_git/state0/libbar.git" 2>>~%EOE%;
+          %.+
+          3 package(s) in 2 repository(s)
+          EOE
+
+        $pkg_status libbar >'libbar available 1.0.0+1'
+      }
+    }
+  }
+}

@@ -1,0 +1,6 @@
+./: libhello/ tests/ doc{INSTALL} manifest
+
+# Don't install tests or the INSTALL file.
+#
+tests/:          install = false
+doc{INSTALL}@./: install = false

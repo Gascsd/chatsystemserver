@@ -1,0 +1,5 @@
+[file_logger][18:25:47][759277][debug   ]你好！
+[file_logger][18:25:47][759277][info    ]hello world 1
+[file_logger][18:25:47][759277][warning ]this is a warning
+[file_logger][18:25:47][759277][error   ]this is an error
+[file_logger][18:25:47][759277][critical]crash and burn

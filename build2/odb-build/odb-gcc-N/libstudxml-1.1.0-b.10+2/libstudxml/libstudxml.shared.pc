@@ -1,0 +1,10 @@
+Name: libstudxml
+Version: 1.1.0-b.10+2
+Description: Streaming XML pull parser/serializer for modern C++
+URL: https://www.codesynthesis.com/projects/libstudxml/
+Cflags: -I/usr/include -DLIBSTUDXML_SHARED
+Libs: -L/usr/lib -lstudxml
+
+build2.metadata = 1
+
+cc.type = cxx

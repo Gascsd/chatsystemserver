@@ -1,0 +1,40 @@
+# file      : tests/test/script/builtin/mkdir.testscript
+# license   : MIT; see accompanying LICENSE file
+
+.include ../common.testscript
+
+: dir
+:
+{
+  : cleanup
+  :
+  $c <<EOI && $b
+    mkdir a b
+    EOI
+
+  : no-cleanup
+  :
+  : Also test that `--` is handled properly.
+  :
+  $c <<EOI && $b
+    mkdir --no-cleanup -- --no-cleanup;
+    rmdir -- --no-cleanup
+    EOI
+}
+
+: parent
+:
+{
+  : cleanup
+  :
+  $c <<EOI && $b
+    mkdir -p a/b
+    EOI
+
+  : no-cleanup
+  :
+  $c <<EOI && $b
+    mkdir -p --no-cleanup a/b;
+    rm -r a
+    EOI
+}

@@ -1,0 +1,3 @@
+[default-logger][14:10:03][2010864][warning ] [main.cc:15]这是一个 warning 信息
+[default-logger][14:10:03][2010864][error   ] [main.cc:16]这是一个 error 信息
+[default-logger][14:10:03][2010864][critical] [main.cc:17]这是一个 fatal 信息

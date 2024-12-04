@@ -1,0 +1,10 @@
+Name: build2
+Version: 0.17.0
+Description: build2 build system
+URL: https://build2.org
+Cflags: -I/usr/local/include -DLIBBUILD2_BASH_SHARED
+Libs: -L/usr/local/lib -lbuild2-bash -lbuild2-in
+
+build2.metadata = 1
+
+cc.type = cxx

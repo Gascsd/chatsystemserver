@@ -1,0 +1,149 @@
+# file      : tests/rep-list.testscript
+# license   : MIT; see accompanying LICENSE file
+
+.include common.testscript \
+         config.testscript \
+         remote.testscript \
+         remote-git.testscript
+
+# Source repository:
+#
+# rep-list
+# |-- extra                     -> stable (prerequisite)
+# |   |-- libbar-1.1.0+1.tar.gz
+# |   `-- repositories.manifest
+# |
+# |-- math                      -> extra (prerequisite)
+# |   |-- libbar-1.0.0.tar.gz
+# |   `-- repositories.manifest
+# |
+# |-- stable                    -> math (prerequisite)
+# |   |-- libfoo-1.0.0.tar.gz
+# |   `-- repositories.manifest
+# |
+# `-- testing                   -> stable (complement), extra (prerequisite)
+# |   |-- libbar-2.0.0.tar.gz
+# |   `-- repositories.manifest
+# |
+# `-- git
+#     |-- libbar.git            -> style-basic.git (prerequisite)
+#     `-- style-basic.git
+
+# Prepare repositories used by tests if running in the local mode.
+#
++if! $remote
+  cp -r $src/extra   $out/extra
+  cp -r $src/math    $out/math
+  cp -r $src/stable  $out/stable
+  cp -r $src/testing $out/testing
+
+  c = [cmdline] $rep_create 2>!
+
+  $c $out/extra   &$out/extra/packages.manifest
+  $c $out/math    &$out/math/packages.manifest
+  $c $out/stable  &$out/stable/packages.manifest
+  $c $out/testing &$out/testing/packages.manifest
+
+  # Create git repositories.
+  #
+  $git_extract $src/git/libbar.tar
+  $git_extract $src/git/style-basic.tar &$out_git/state0/***
+end
+
+rep_add   += -d cfg 2>!
+rep_fetch += -d cfg --auth all --trust-yes 2>!
+
+: unexpected-arg
+:
+{
+  $clone_cfg;
+
+  $* unexpected 2>>EOE != 0
+    error: unexpected argument 'unexpected'
+      info: run 'bpkg help rep-list' for more information
+    EOE
+}
+
+: top-level
+:
+{
+  $clone_cfg;
+  $rep_add $rep/stable && $rep_add $rep/testing && $rep_fetch;
+
+  $* >>"EOO"
+    pkg:build2.org/rep-list/stable ($rep/stable)
+    pkg:build2.org/rep-list/testing ($rep/testing)
+    EOO
+}
+
+: prerequisites
+:
+: Note that here we also test that the prerequisites cycle is handled properly.
+:
+{
+  $clone_cfg;
+  $rep_add $rep/stable && $rep_fetch;
+
+  $* --prerequisites >>"EOO"
+    pkg:build2.org/rep-list/stable ($rep/stable)
+      prerequisite pkg:build2.org/rep-list/math ($rep/math)
+        prerequisite pkg:build2.org/rep-list/extra ($rep/extra)
+          prerequisite pkg:build2.org/rep-list/stable ($rep/stable)
+    EOO
+}
+
+: complements
+:
+{
+  $clone_cfg;
+  $rep_add $rep/testing && $rep_fetch;
+
+  $* --complements >>"EOO"
+    pkg:build2.org/rep-list/testing ($rep/testing)
+      complement pkg:build2.org/rep-list/stable ($rep/stable)
+    EOO
+}
+
+: all
+:
+{
+  $clone_cfg;
+  $rep_add $rep/testing && $rep_fetch;
+
+  $* --prerequisites --complements >>"EOO"
+    pkg:build2.org/rep-list/testing ($rep/testing)
+      complement pkg:build2.org/rep-list/stable ($rep/stable)
+        prerequisite pkg:build2.org/rep-list/math ($rep/math)
+          prerequisite pkg:build2.org/rep-list/extra ($rep/extra)
+            prerequisite pkg:build2.org/rep-list/stable ($rep/stable)
+      prerequisite pkg:build2.org/rep-list/extra ($rep/extra)
+        prerequisite pkg:build2.org/rep-list/stable ($rep/stable)
+          prerequisite pkg:build2.org/rep-list/math ($rep/math)
+            prerequisite pkg:build2.org/rep-list/extra ($rep/extra)
+    EOO
+}
+
+: git-rep
+:
+if! $git_supported
+{
+  # Skip git repository tests.
+  #
+}
+else
+{
+  rep = "$rep_git/state0"
+  test.cleanups += &cfg/.bpkg/repos/*/***
+
+  : root-complement
+  :
+  : Test that the root repository complement is handled properly.
+  :
+  $clone_root_cfg;
+  $rep_add "$rep/libbar.git#master" && $rep_fetch;
+
+  $* --complements --prerequisites >>~%EOO%
+    %git:.+libbar#master .+libbar\.git#master%
+    %  prerequisite git:.+style-basic#stable .+style-basic\.git#stable \(heads/master\)%
+    EOO
+}

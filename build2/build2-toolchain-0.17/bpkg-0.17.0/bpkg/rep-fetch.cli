@@ -1,0 +1,70 @@
+// file      : bpkg/rep-fetch.cli
+// license   : MIT; see accompanying LICENSE file
+
+include <bpkg/configuration.cli>;
+
+"\section=1"
+"\name=bpkg-rep-fetch"
+"\summary=fetch list of available packages"
+
+namespace bpkg
+{
+  {
+    "<options> <rep-name> <rep-loc>",
+
+    "\h|SYNOPSIS|
+
+     \c{\b{bpkg rep-fetch}|\b{fetch} [<options>] [(<rep-name> | <rep-loc>)...]}
+
+     \h|DESCRIPTION|
+
+     The \cb{rep-fetch} command fetches the list of available packages for the
+     specified repositories as well as all their complement and prerequisite
+     repositories, recursively. If no repositories were specified, then all
+     the repositories previously added (\l{bpkg-rep-add(1)}) to the
+     configuration are fetched.
+
+     The repository to fetch can be specified either as a repository name or
+     as a repository location (URL or a directory path; see
+     \l{bpkg-rep-add(1)} for details). In the latter case, the repository
+     location is added/replaced as if by first executing the \cb{rep-add}
+     command.
+
+     Note that fetching only a specific repository that happens to be a
+     prerequisite or complete of another repository not being fetched may
+     result in an inconsistent repository state."
+  }
+
+  class rep_fetch_options: configuration_options
+  {
+    "\h|REP-FETCH OPTIONS|"
+
+    bool --shallow
+    {
+      "Do not re-fetch complement and prerequisite repositories of the
+       specified repositories unless the set of complements and/or
+       prerequisites has changed."
+    }
+  };
+
+  "
+   \h|DEFAULT OPTIONS FILES|
+
+   See \l{bpkg-default-options-files(1)} for an overview of the default
+   options files. For the \cb{rep-fetch} command the search start
+   directory is the configuration directory. The following options files are
+   searched for in each directory and, if found, loaded in the order listed:
+
+   \
+   bpkg.options
+   bpkg-rep-fetch.options
+   \
+
+   The following \cb{rep-fetch} command options cannot be specified in the
+   default options files:
+
+   \
+   --directory|-d
+   \
+  "
+}

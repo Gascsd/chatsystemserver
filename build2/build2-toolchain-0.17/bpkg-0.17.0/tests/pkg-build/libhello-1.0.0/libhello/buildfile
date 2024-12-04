@@ -1,0 +1,28 @@
+lib{hello}: {hxx cxx}{hello} hxx{export}
+
+# Build options.
+#
+cxx.poptions += "-I$src_root"
+
+obja{*}: cxx.poptions += -DLIBHELLO_STATIC_BUILD
+objs{*}: cxx.poptions += -DLIBHELLO_SHARED_BUILD
+
+# Export options.
+#
+lib{hello}: cxx.export.poptions = "-I$src_root"
+
+liba{hello}: cxx.export.poptions += -DLIBHELLO_STATIC
+libs{hello}: cxx.export.poptions += -DLIBHELLO_SHARED
+
+# For pre-releases use the complete version to make sure they cannot be used
+# in place of another pre-release or the final version. See the version module
+# for details on the version.* variable values.
+#
+if $version.pre_release
+  lib{hello}: bin.lib.version = @"-$version.project_id"
+else
+  lib{hello}: bin.lib.version = @"-$version.major.$version.minor"
+
+# Install into the libhello/ subdirectory of, say, /usr/include/.
+#
+{hxx ixx txx}{*}: install = include/libhello/

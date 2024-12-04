@@ -1,0 +1,6 @@
+Name: build2
+Version: 0.17.0
+Description: build2 build system
+URL: https://build2.org
+Cflags: -I/usr/local/include
+Libs: -L/usr/local/lib -lbuild2-c -lbuild2-cc -lbuild2-bin

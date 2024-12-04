@@ -1,0 +1,4 @@
+# file      : tests/function/builtin/buildfile
+# license   : MIT; see accompanying LICENSE file
+
+./: testscript $b

@@ -1,0 +1,11 @@
+# file      : tests/backtrace/buildfile
+# license   : MIT; see accompanying LICENSE file
+
+import libs = libbutl%lib{butl}
+
+exe{driver}: {hxx cxx}{*} $libs testscript
+
+# Make sure backtrace() includes function names.
+#
+if ($cxx.target.class == 'linux' && $cc.stdlib == 'glibc')
+  cxx.loptions += -rdynamic

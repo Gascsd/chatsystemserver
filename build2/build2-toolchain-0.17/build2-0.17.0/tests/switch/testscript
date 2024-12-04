@@ -1,0 +1,407 @@
+# file      : tests/switch/testscript
+# license   : MIT; see accompanying LICENSE file
+
+# Test switch.
+
+.include ../common.testscript
+
+: basics
+:
+$* <<EOI >>EOO
+for i: 1 2 3 4 5
+{
+  switch $i
+  {
+    case 1
+      print 1
+    case 2
+    {
+      print 2
+    }
+    case 0
+    case 3
+      print 0,3
+    case 0|4
+      print 0,4
+    default
+      print d
+  }
+}
+EOI
+1
+2
+0,3
+0,4
+d
+EOO
+
+: basics-multiple
+:
+$* <<EOI >>EOO
+for i: 1 2 3 4 5
+{
+  switch $i, $i
+  {
+    case 1, 1
+      print 1
+    case 1, 2
+      assert
+    case 2
+    {
+      print 2
+    }
+    case 3, 3
+    case 0, 0
+      print 3,0
+    case 4|0, 0|4|0
+      print 4,0
+    default
+      print d
+  }
+}
+EOI
+1
+2
+3,0
+4,0
+d
+EOO
+
+: matcher
+:
+$* <<EOI >>EOO
+for i: 123 abc
+{
+  switch $i: regex.match
+  {
+    case '[0-9]+'
+      print n
+    case '[a-z]+'
+      print a
+  }
+}
+EOI
+n
+a
+EOO
+
+: matcher-arg
+:
+: Note that case-insensitive regex matching is broken in older versions of
+: libstdc++ (see GCC bug 71500 for details).
+:
+if ($cxx.id != 'gcc'       || \
+    $cxx.version.major > 7 || \
+    ($cxx.version.major == 7 && $cxx.version.minor >= 1))
+{
+  $* <<EOI >>EOO
+  for i: abc ABC aBC
+  {
+    switch $i: regex.match icase
+    {
+      case '[a-z]+'
+        print a
+    }
+  }
+  EOI
+  a
+  a
+  a
+  EOO
+}
+
+: matcher-multiple
+:
+$* <<EOI >>EOO
+for i: 123 abc
+{
+  switch $i: regex.match, $i: regex.match
+  {
+    case '[0-9]+', '[0-9]+'
+      print nn
+    case '[0-9]+', '[a-z]+'
+      print na
+    case '[a-z]+', '[0-9]+'
+      print an
+    case '[a-z]+', '[a-z]+'
+      print aa
+  }
+}
+EOI
+nn
+aa
+EOO
+
+: extractor
+:
+$* <<EOI >>EOO
+for i: 123 abc
+{
+  switch $i: regex.match return_subs
+  {
+    case '([0-9]+)'
+      print n
+    default
+      print d
+  }
+}
+EOI
+n
+d
+EOO
+
+: matcher-path
+:
+$* <<EOI >>EOO
+for i: 123 abc 1a3
+{
+  switch $i: path.match
+  {
+    case '[0-9][0-9][0-9]'
+      print n
+    case '[a-z][a-z][a-z]'
+      print a
+    case '*'
+      print d
+  }
+}
+EOI
+n
+a
+d
+EOO
+
+: matcher-case
+:
+$* <<EOI >>EOO
+for i: abc ABC aBC
+{
+  switch $i: string.icasecmp
+  {
+    case 'AbC'
+      print a
+  }
+}
+EOI
+a
+a
+a
+EOO
+
+: attributes
+:
+$* <<EOI >>EOO
+switch [uint64] 1, 01
+{
+  case 01, [uint64] 1
+    print 1
+}
+EOI
+1
+EOO
+
+: null
+:
+$* <<EOI >>EOO
+for i: 0 1
+{
+  switch ($i == 0 ? [null] : $i)
+  {
+    case [null]
+      print n
+    case [uint64] 1
+      print 1
+  }
+}
+EOI
+n
+1
+EOO
+
+: empty
+:
+$* <<EOI
+switch 1
+{
+}
+EOI
+
+: default
+:
+$* <<EOI >>EOO
+switch 1
+{
+  default
+    print d
+}
+EOI
+d
+EOO
+
+: nested
+:
+$* <<EOI >>EOO
+switch 1
+{
+  case 1
+  {
+    switch 2
+    {
+      case 2
+        print 2
+      case 1
+        assert
+    }
+  }
+  case 2
+    assert
+}
+EOI
+2
+EOO
+
+: case-default
+:
+$* <<EOI >>EOO
+for i: 1 2
+{
+  switch $i
+  {
+    case 1
+    default
+      print 1,d
+  }
+}
+EOI
+1,d
+1,d
+EOO
+
+: case-outside
+:
+$* <<EOI 2>>EOE != 0
+case 1
+EOI
+<stdin>:1:1: error: case outside switch
+EOE
+
+: default-before-case
+:
+$* <<EOI 2>>EOE != 0
+switch 1
+{
+  default
+    x = 1
+  case 2
+    x = 2
+}
+EOI
+<stdin>:5:3: error: case after default
+  info: default must be last in the switch block
+EOE
+
+: default-multiple
+:
+$* <<EOI 2>>EOE != 0
+switch 1
+{
+  default
+    x = 1
+  default
+    x = 2
+}
+EOI
+<stdin>:5:3: error: multiple defaults
+EOE
+
+: empty-switch
+:
+$* <<EOI 2>>EOE != 0
+switch
+{
+}
+EOI
+<stdin>:1:7: error: expected switch expression instead of <newline>
+EOE
+
+: empty-case
+:
+$* <<EOI 2>>EOE != 0
+switch 1
+{
+  case
+    x = 1
+}
+EOI
+<stdin>:3:7: error: expected case pattern instead of <newline>
+EOE
+
+: junk-in-switch
+:
+$* <<EOI 2>>EOE != 0
+switch 1
+{
+  x = 0
+}
+EOI
+<stdin>:3:3: error: expected case or default instead of 'x'
+EOE
+
+: multiple-more-patterns
+:
+$* <<EOI 2>>EOE != 0
+switch 1
+{
+  case 1, 1
+}
+EOI
+<stdin>:3:11: error: more patterns than switch expressions
+EOE
+
+: matcher-missing
+:
+$* <<EOI 2>>EOE != 0
+switch 1:
+{
+  case 1
+    x = 1
+}
+EOI
+<stdin>:1:10: error: expected function name instead of <newline>
+EOE
+
+: matcher-bad-name
+:
+$* <<EOI 2>>EOE != 0
+switch 1: file{x}
+{
+  case 1
+    x = 1
+}
+EOI
+<stdin>:1:11: error: function name expected instead of file{x}
+EOE
+
+: matcher-unknown
+:
+$* <<EOI 2>>EOE != 0
+switch 1: no_such_matcher
+{
+  case 1
+    x = 1
+}
+EOI
+<stdin>:3:8: error: unmatched call to no_such_matcher(<untyped>, <untyped>)
+EOE
+
+: match-extraction
+:
+$* <<EOI 2>>EOE != 0
+switch 1
+{
+  case 1: y
+    x = $y
+}
+EOI
+<stdin>:3:9: error: unexpected ':' (match extraction is not yet supported)
+EOE

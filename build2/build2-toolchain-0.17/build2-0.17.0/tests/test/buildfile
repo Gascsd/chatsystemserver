@@ -1,0 +1,4 @@
+# file      : tests/test/buildfile
+# license   : MIT; see accompanying LICENSE file
+
+./: */ file{common.testscript}

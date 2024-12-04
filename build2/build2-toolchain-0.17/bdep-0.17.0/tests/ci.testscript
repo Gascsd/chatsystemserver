@@ -1,0 +1,1028 @@
+# file      : tests/ci.testscript
+# license   : MIT; see accompanying LICENSE file
+
+.include common.testscript project.testscript
+
+# bdep-ci requirements for the minimum supported git version are higher then
+# the default 2.1.0 (see bdep/ci.cxx for details).
+#
++if! ($git_version_major >  2 || \
+      $git_version_major == 2 && $git_version_minor >= 11)
+  exit
+end
+
+server = $config.bdep.tests.ci.server
+
++if ("$server" == '')
+  exit
+end
+
+# Create the remote repository.
+#
++mkdir --no-cleanup prj.git
++git -C prj.git -c init.defaultBranch=master init --bare --quiet &prj.git/***
+
+# Adjust the local repository and push it to the remote one.
+#
++sed -i -e 's/^(version:) .*$/\1 1.0.1/' prj/manifest
+
++cat <<EOI >+prj/build/root.build
+  config [bool] config.prj.network ?= false
+  config [bool] config.prj.cache ?= false
+  EOI
+
++cat <<EOI >+prj/manifest
+  build-auxiliary: *-postgresql_*
+  network-build-config: config.prj.network=true
+  EOI
+
+g = [cmdline] git -C prj 2>! >&2
+
++$g config user.name 'Test Script'
++$g config user.email 'testscript@example.com'
++$g remote add origin $~/prj.git
++$g add '*'
++$g commit -m 'Create' --no-verify
++$g push --set-upstream origin master
+
+# Repository the CI-ed packages come from.
+#
+repository='http://example.com/prj.git'
+
+test.arguments += --yes --repository "$repository" --server "$server" \
+                  --simulate 'success'
+
+config_cxx = [cmdline] cc config.cxx=$quote($recall($cxx.path) $cxx.config.mode, true)
+
+new  += --vcs git,branch=master 2>!
+init += $config_cxx -d prj 2>! &prj/**/bootstrap/***
+
+windows = ($cxx.target.class == 'windows')
+
+# Normally we disable the progress indication that complicates stderr output
+# validation. We also disable the progress indication test on Windows, as
+# curl's progress is not always properly terminated there, messing up with
+# the subsequent output.
+#
+: single-pkg
+:
+{
+  : single-cfg
+  :
+  {
+    $clone_root_prj;
+    $init -C @cfg &prj-cfg/***;
+
+    $* --no-progress 2>>~%EOE%
+      %CI request is queued.*%
+      %reference: .+%
+      EOE
+  }
+
+  : progress
+  :
+  if! $windows
+  {
+    $clone_root_prj;
+    $init -C @cfg &prj-cfg/***;
+
+    $* 2>>~"%EOE%"
+      submitting to $server
+      %.*
+      %CI request is queued.*%
+      %reference: .+%
+      EOE
+  }
+
+  : no-cfg
+  :
+  {
+    $new prj &prj/***;
+
+    $* 2>>~%EOE% != 0
+      %error: no default configuration in project .+%
+      %  info: use .+%
+      EOE
+  }
+
+  : multi-cfg
+  :
+  {
+    $clone_root_prj;
+    $init -C @cfg1 &prj-cfg1/***;
+    $init -C @cfg2 &prj-cfg2/***;
+
+    $* --all 2>>EOE != 0
+      error: package prj is initialized in multiple specified configurations
+        info: @cfg1
+        info: @cfg2
+      EOE
+  }
+
+  : no-commits
+  :
+  {
+    $new prj &prj/***;
+    $init -C @cfg &prj-cfg/***;
+
+    $* 2>>~%EOE% != 0
+      error: no commits in project repository
+      %  info: run .+%
+      EOE
+  }
+
+  : invalid-repo
+  :
+  {
+    test.arguments += --repository "$repository#frag"
+
+    $clone_root_prj;
+    $init -C @cfg &prj-cfg/***;
+
+    $* 2>>"EOE" != 0
+      error: remote git repository URL '$repository#frag' already has fragment
+      EOE
+  }
+
+  : overrides
+  :
+  {
+    +$clone_root_prj
+    +$init -C @cfg &prj-cfg/***
+
+    test.options += --no-progress
+
+    : common-build-constraints
+    :
+    : Here we only test that bdep-ci does not fail for valid overrides. It
+    : seems to be impossible to verify the submitted overrides manifest.
+    :
+    {
+      $clone_prj;
+
+      cat <<EOI >=overrides.manifest;
+        : 1
+        builds: all
+        EOI
+
+      $* --overrides-file overrides.manifest \
+         --build-email 'foo@example.com' \
+         --override 'build-error-email: error@example.com' \
+         --override 'builds: &gcc' \
+         --override 'build-include: linux*' \
+         --override 'build-exclude: *' 2>>~%EOE%
+        %CI request is queued.*%
+        %reference: .+%
+        EOE
+    }
+
+    : package-build-constraints
+    :
+    {
+      $clone_prj;
+
+      $* --builds 'default/&gcc' \
+         --override 'default-build-include: linux*' \
+         --override 'default-build-exclude: *' 2>>~%EOE%
+        %CI request is queued.*%
+        %reference: .+%
+        EOE
+    }
+
+    : build-configs
+    :
+    {
+      $clone_prj;
+
+      $* --override 'mytest-build-config: config.prj.network=true config.prj.cache=true' \
+         --override 'default-build-config: config.prj.network=true' 2>>~%EOE%
+        %CI request is queued.*%
+        %reference: .+%
+        EOE
+    }
+
+    : package-build-emails
+    :
+    {
+      $clone_prj;
+
+      $* --override 'default-build-email: foo@example.com' \
+         --override 'default-build-warning-email: bar@example.com' 2>>~%EOE%
+        %CI request is queued.*%
+        %reference: .+%
+        EOE
+    }
+
+    : common-package-build-emails
+    :
+    {
+      $clone_prj;
+
+      $* --build-email 'foo@example.com' \
+         --override 'default-build-warning-email: bar@example.com' 2>>EOE != 0
+        error: invalid --override option value: 'default-build-warning-email' override specified together with 'build-email' override
+          info: override: default-build-warning-email: bar@example.com
+        EOE
+    }
+
+    : package-build-common-emails
+    :
+    {
+      $clone_prj;
+
+      $* --override 'default-build-warning-email: foo@example.com' \
+         --override 'build-error-email: bar@example.com' 2>>EOE != 0
+        error: invalid --override option value: 'build-error-email' override specified together with 'default-build-warning-email' override
+          info: override: build-error-email: bar@example.com
+        EOE
+    }
+
+    : build-configs-constraints
+    :
+    {
+      $clone_prj;
+
+      $* --override 'mytest-build-config: config.prj.network=true config.prj.cache=true' \
+         --build-config 'mytest/linux*-gcc*' \
+         --override 'default-build-config: config.prj.network=true' \
+         --build-config 'default/macos*-gcc*' 2>>~%EOE%
+        %CI request is queued.*%
+        %reference: .+%
+        EOE
+    }
+
+    : build-configs-package-config
+    :
+    {
+      $clone_prj;
+
+      $* --override 'mytest-build-config: config.prj.network=true config.prj.cache=true' \
+         --package-config 'mytest' 2>>~%EOE%
+        %CI request is queued.*%
+        %reference: .+%
+        EOE
+    }
+
+    : common-package-build-constraints
+    :
+    {
+      $clone_prj;
+
+      cat <<EOI >=overrides.manifest;
+        : 1
+        builds: all
+        EOI
+
+      $* --builds 'network/&gcc' --overrides-file overrides.manifest 2>>~%EOE% != 0
+        error: invalid file referenced by --overrides-file option: 'builds' override specified together with 'network-builds' override
+          info: override: builds: all
+        EOE
+    }
+
+    : build-auxiliary
+    :
+    {
+      $clone_prj;
+
+      $* --override 'build-auxiliary: *-postgresql_16' 2>>~%EOE%;
+        %CI request is queued.*%
+        %reference: .+%
+        EOE
+
+      $* --override 'build-auxiliary-pgsql: *-postgresql_16' 2>>EOE != 0
+        error: invalid --override option value: no match for 'build-auxiliary-pgsql' value override
+          info: override: build-auxiliary-pgsql: *-postgresql_16
+        EOE
+    }
+
+    : build-bot
+    :
+    {
+      +$clone_prj
+
+      : common
+      :
+      {
+        $clone_prj;
+
+        cat <<EOI >=f;
+          : 1
+          build-bot:
+          \
+          -----BEGIN PUBLIC KEY-----
+          MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAw5liP5pyU9ebC/nD3djZ
+          1H2dlKmUyiX0Z8POvKhLREd0B3rM59bPcnbRB4HMIhj0J0hUBvS8xb4u5udCPToa
+          x0A/LMWZ6claiivNtJ3CdLV98eklWdNUg5WXOuqq9QDKXw2ZpGbwDwCOh6aHSWVq
+          98N9AQx0ZMmMWz3qhRyxPfh+GeJ05uj2ohU9FeUJxeqUcgJT/UcMZ3+7KYbwr+Uq
+          /HCoX1BmN6nvzhQGHvJIZ2IcjvOQ0AUrPmpSZN01Zr3ZEpkHM3hJWNLu3ntJLGBQ
+          0aT5kG3iqFyr9q3M3c4J8c0AWrnDjvj0qnCyjNwqW+qIpatmCNT43DmgYr9fQLW0
+          UHusburz53AbXs12zu3gZzkb0irlShatkMqqQaqaU0/+zw1LnoZ+rvmn2XV97UuK
+          LFKMKXCnyi2ZG65IZHGkjBVAPuvsX6RgLNyner/QtkDJTbfhktInbG08dCPqv1EF
+          1OtcYKMTn8I5P2VmMO6SXXDLMSdU8b5DA5EY6Ca6JBB8g06S9sqGqXgQFysAnZs1
+          VFgMopf8WZqj23x+DX+9KKT2pVnjbwRvBAntuCDoO75gWoETDnCQXEei/PbyamPq
+          9+NjNsTDn67iJTGncZbII+eciY2YiFHm6GMzBPsUYlQcxiuO4X36jW6m2rwuw37K
+          oFDbGI3uY4LnhwmDFLbjtk8CAwEAAQ==
+          -----END PUBLIC KEY-----
+          \
+          EOI
+
+        $* --overrides-file f 2>>~%EOE%
+          %CI request is queued.*%
+          %reference: .+%
+          EOE
+      }
+
+      : config-specific
+      :
+      {
+        $clone_prj;
+
+        cat <<EOI >=f;
+          : 1
+          network-build-bot:
+          \
+          -----BEGIN PUBLIC KEY-----
+          MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAw5liP5pyU9ebC/nD3djZ
+          1H2dlKmUyiX0Z8POvKhLREd0B3rM59bPcnbRB4HMIhj0J0hUBvS8xb4u5udCPToa
+          x0A/LMWZ6claiivNtJ3CdLV98eklWdNUg5WXOuqq9QDKXw2ZpGbwDwCOh6aHSWVq
+          98N9AQx0ZMmMWz3qhRyxPfh+GeJ05uj2ohU9FeUJxeqUcgJT/UcMZ3+7KYbwr+Uq
+          /HCoX1BmN6nvzhQGHvJIZ2IcjvOQ0AUrPmpSZN01Zr3ZEpkHM3hJWNLu3ntJLGBQ
+          0aT5kG3iqFyr9q3M3c4J8c0AWrnDjvj0qnCyjNwqW+qIpatmCNT43DmgYr9fQLW0
+          UHusburz53AbXs12zu3gZzkb0irlShatkMqqQaqaU0/+zw1LnoZ+rvmn2XV97UuK
+          LFKMKXCnyi2ZG65IZHGkjBVAPuvsX6RgLNyner/QtkDJTbfhktInbG08dCPqv1EF
+          1OtcYKMTn8I5P2VmMO6SXXDLMSdU8b5DA5EY6Ca6JBB8g06S9sqGqXgQFysAnZs1
+          VFgMopf8WZqj23x+DX+9KKT2pVnjbwRvBAntuCDoO75gWoETDnCQXEei/PbyamPq
+          9+NjNsTDn67iJTGncZbII+eciY2YiFHm6GMzBPsUYlQcxiuO4X36jW6m2rwuw37K
+          oFDbGI3uY4LnhwmDFLbjtk8CAwEAAQ==
+          -----END PUBLIC KEY-----
+          \
+          EOI
+
+        $* --overrides-file f 2>>~%EOE%
+          %CI request is queued.*%
+          %reference: .+%
+          EOE
+      }
+
+      : common-and-config-specific
+      :
+      {
+        $clone_prj;
+
+        cat <<EOI >=f;
+          : 1
+          build-bot:
+          \
+          -----BEGIN PUBLIC KEY-----
+          ABCCIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAw5liP5pyU9ebC/nD3djZ
+          1H2dlKmUyiX0Z8POvKhLREd0B3rM59bPcnbRB4HMIhj0J0hUBvS8xb4u5udCPToa
+          x0A/LMWZ6claiivNtJ3CdLV98eklWdNUg5WXOuqq9QDKXw2ZpGbwDwCOh6aHSWVq
+          98N9AQx0ZMmMWz3qhRyxPfh+GeJ05uj2ohU9FeUJxeqUcgJT/UcMZ3+7KYbwr+Uq
+          /HCoX1BmN6nvzhQGHvJIZ2IcjvOQ0AUrPmpSZN01Zr3ZEpkHM3hJWNLu3ntJLGBQ
+          0aT5kG3iqFyr9q3M3c4J8c0AWrnDjvj0qnCyjNwqW+qIpatmCNT43DmgYr9fQLW0
+          UHusburz53AbXs12zu3gZzkb0irlShatkMqqQaqaU0/+zw1LnoZ+rvmn2XV97UuK
+          LFKMKXCnyi2ZG65IZHGkjBVAPuvsX6RgLNyner/QtkDJTbfhktInbG08dCPqv1EF
+          1OtcYKMTn8I5P2VmMO6SXXDLMSdU8b5DA5EY6Ca6JBB8g06S9sqGqXgQFysAnZs1
+          VFgMopf8WZqj23x+DX+9KKT2pVnjbwRvBAntuCDoO75gWoETDnCQXEei/PbyamPq
+          9+NjNsTDn67iJTGncZbII+eciY2YiFHm6GMzBPsUYlQcxiuO4X36jW6m2rwuw37K
+          oFDbGI3uY4LnhwmDFLbjtk8CAwEAAQ==
+          -----END PUBLIC KEY-----
+          \
+          network-build-bot:
+          \
+          -----BEGIN PUBLIC KEY-----
+          MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAw5liP5pyU9ebC/nD3djZ
+          1H2dlKmUyiX0Z8POvKhLREd0B3rM59bPcnbRB4HMIhj0J0hUBvS8xb4u5udCPToa
+          x0A/LMWZ6claiivNtJ3CdLV98eklWdNUg5WXOuqq9QDKXw2ZpGbwDwCOh6aHSWVq
+          98N9AQx0ZMmMWz3qhRyxPfh+GeJ05uj2ohU9FeUJxeqUcgJT/UcMZ3+7KYbwr+Uq
+          /HCoX1BmN6nvzhQGHvJIZ2IcjvOQ0AUrPmpSZN01Zr3ZEpkHM3hJWNLu3ntJLGBQ
+          0aT5kG3iqFyr9q3M3c4J8c0AWrnDjvj0qnCyjNwqW+qIpatmCNT43DmgYr9fQLW0
+          UHusburz53AbXs12zu3gZzkb0irlShatkMqqQaqaU0/+zw1LnoZ+rvmn2XV97UuK
+          LFKMKXCnyi2ZG65IZHGkjBVAPuvsX6RgLNyner/QtkDJTbfhktInbG08dCPqv1EF
+          1OtcYKMTn8I5P2VmMO6SXXDLMSdU8b5DA5EY6Ca6JBB8g06S9sqGqXgQFysAnZs1
+          VFgMopf8WZqj23x+DX+9KKT2pVnjbwRvBAntuCDoO75gWoETDnCQXEei/PbyamPq
+          9+NjNsTDn67iJTGncZbII+eciY2YiFHm6GMzBPsUYlQcxiuO4X36jW6m2rwuw37K
+          oFDbGI3uY4LnhwmDFLbjtk8CAwEAAQ==
+          -----END PUBLIC KEY-----
+          \
+          EOI
+
+        $* --overrides-file f 2>>EOE != 0
+          error: invalid file referenced by --overrides-file option: 'network-build-bot' override specified together with 'build-bot' override
+            info: override: network-build-bot:
+          \
+          -----BEGIN PUBLIC KEY-----
+          MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAw5liP5pyU9ebC/nD3djZ
+          1H2dlKmUyiX0Z8POvKhLREd0B3rM59bPcnbRB4HMIhj0J0hUBvS8xb4u5udCPToa
+          x0A/LMWZ6claiivNtJ3CdLV98eklWdNUg5WXOuqq9QDKXw2ZpGbwDwCOh6aHSWVq
+          98N9AQx0ZMmMWz3qhRyxPfh+GeJ05uj2ohU9FeUJxeqUcgJT/UcMZ3+7KYbwr+Uq
+          /HCoX1BmN6nvzhQGHvJIZ2IcjvOQ0AUrPmpSZN01Zr3ZEpkHM3hJWNLu3ntJLGBQ
+          0aT5kG3iqFyr9q3M3c4J8c0AWrnDjvj0qnCyjNwqW+qIpatmCNT43DmgYr9fQLW0
+          UHusburz53AbXs12zu3gZzkb0irlShatkMqqQaqaU0/+zw1LnoZ+rvmn2XV97UuK
+          LFKMKXCnyi2ZG65IZHGkjBVAPuvsX6RgLNyner/QtkDJTbfhktInbG08dCPqv1EF
+          1OtcYKMTn8I5P2VmMO6SXXDLMSdU8b5DA5EY6Ca6JBB8g06S9sqGqXgQFysAnZs1
+          VFgMopf8WZqj23x+DX+9KKT2pVnjbwRvBAntuCDoO75gWoETDnCQXEei/PbyamPq
+          9+NjNsTDn67iJTGncZbII+eciY2YiFHm6GMzBPsUYlQcxiuO4X36jW6m2rwuw37K
+          oFDbGI3uY4LnhwmDFLbjtk8CAwEAAQ==
+          -----END PUBLIC KEY-----
+          \
+          EOE
+      }
+
+      : unknown-config
+      :
+      {
+        $clone_prj;
+
+        cat <<EOI >=f;
+          : 1
+          unknown-build-bot:
+          \
+          -----BEGIN PUBLIC KEY-----
+          MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAw5liP5pyU9ebC/nD3djZ
+          1H2dlKmUyiX0Z8POvKhLREd0B3rM59bPcnbRB4HMIhj0J0hUBvS8xb4u5udCPToa
+          x0A/LMWZ6claiivNtJ3CdLV98eklWdNUg5WXOuqq9QDKXw2ZpGbwDwCOh6aHSWVq
+          98N9AQx0ZMmMWz3qhRyxPfh+GeJ05uj2ohU9FeUJxeqUcgJT/UcMZ3+7KYbwr+Uq
+          /HCoX1BmN6nvzhQGHvJIZ2IcjvOQ0AUrPmpSZN01Zr3ZEpkHM3hJWNLu3ntJLGBQ
+          0aT5kG3iqFyr9q3M3c4J8c0AWrnDjvj0qnCyjNwqW+qIpatmCNT43DmgYr9fQLW0
+          UHusburz53AbXs12zu3gZzkb0irlShatkMqqQaqaU0/+zw1LnoZ+rvmn2XV97UuK
+          LFKMKXCnyi2ZG65IZHGkjBVAPuvsX6RgLNyner/QtkDJTbfhktInbG08dCPqv1EF
+          1OtcYKMTn8I5P2VmMO6SXXDLMSdU8b5DA5EY6Ca6JBB8g06S9sqGqXgQFysAnZs1
+          VFgMopf8WZqj23x+DX+9KKT2pVnjbwRvBAntuCDoO75gWoETDnCQXEei/PbyamPq
+          9+NjNsTDn67iJTGncZbII+eciY2YiFHm6GMzBPsUYlQcxiuO4X36jW6m2rwuw37K
+          oFDbGI3uY4LnhwmDFLbjtk8CAwEAAQ==
+          -----END PUBLIC KEY-----
+          \
+          EOI
+
+        $* --overrides-file f 2>>EOE != 0
+          error: invalid file referenced by --overrides-file option: cannot override 'unknown-build-bot' value: no build package configuration 'unknown'
+            info: override: unknown-build-bot:
+          \
+          -----BEGIN PUBLIC KEY-----
+          MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAw5liP5pyU9ebC/nD3djZ
+          1H2dlKmUyiX0Z8POvKhLREd0B3rM59bPcnbRB4HMIhj0J0hUBvS8xb4u5udCPToa
+          x0A/LMWZ6claiivNtJ3CdLV98eklWdNUg5WXOuqq9QDKXw2ZpGbwDwCOh6aHSWVq
+          98N9AQx0ZMmMWz3qhRyxPfh+GeJ05uj2ohU9FeUJxeqUcgJT/UcMZ3+7KYbwr+Uq
+          /HCoX1BmN6nvzhQGHvJIZ2IcjvOQ0AUrPmpSZN01Zr3ZEpkHM3hJWNLu3ntJLGBQ
+          0aT5kG3iqFyr9q3M3c4J8c0AWrnDjvj0qnCyjNwqW+qIpatmCNT43DmgYr9fQLW0
+          UHusburz53AbXs12zu3gZzkb0irlShatkMqqQaqaU0/+zw1LnoZ+rvmn2XV97UuK
+          LFKMKXCnyi2ZG65IZHGkjBVAPuvsX6RgLNyner/QtkDJTbfhktInbG08dCPqv1EF
+          1OtcYKMTn8I5P2VmMO6SXXDLMSdU8b5DA5EY6Ca6JBB8g06S9sqGqXgQFysAnZs1
+          VFgMopf8WZqj23x+DX+9KKT2pVnjbwRvBAntuCDoO75gWoETDnCQXEei/PbyamPq
+          9+NjNsTDn67iJTGncZbII+eciY2YiFHm6GMzBPsUYlQcxiuO4X36jW6m2rwuw37K
+          oFDbGI3uY4LnhwmDFLbjtk8CAwEAAQ==
+          -----END PUBLIC KEY-----
+          \
+          EOE
+      }
+    }
+
+    : invalid-option
+    :
+    {
+      +$clone_prj
+
+      : overrides-file
+      :
+      {
+        +$clone_prj
+
+        : reading
+        :
+        {
+          $clone_prj;
+
+          $* --overrides-file overrides.manifest 2>>~%EOE% != 0
+            %error: invalid value 'overrides.manifest' for option '--overrides-file': unable to read: .+%
+            EOE
+        }
+
+        : parsing
+        :
+        {
+          $clone_prj;
+
+          cat <<EOI >=overrides.manifest;
+            builds: all
+            EOI
+
+          $* --overrides-file overrides.manifest 2>>EOE != 0
+            error: invalid value 'overrides.manifest' for option '--overrides-file': unable to parse: 1:1: error: format version pair expected
+            EOE
+        }
+      }
+
+      : override
+      :
+      {
+        $clone_prj;
+
+        $* --override 'all' 2>>EOE != 0
+          error: invalid value 'all' for option '--override': missing ':'
+          EOE
+      }
+
+      : override-pair
+      :
+      : Each override option is valid by its own, but the resulting overrides
+      : manifest is invalid.
+      :
+      {
+        $clone_prj;
+
+        $* --override 'builds: all' --override 'builds: default : &gcc' 2>>EOE != 0
+          error: invalid --override option value: invalid package builds: unexpected underlying class set
+            info: override: builds: default : &gcc
+          EOE
+      }
+
+      : overrides
+      :
+      : This is a fake option (see ci.cli for details).
+      :
+      {
+        $clone_prj;
+
+        $* --overrides 'all' 2>>EOE != 0
+          error: unknown option '--overrides'
+          EOE
+      }
+
+      : target-and-package-configs
+      :
+      {
+        $clone_prj;
+
+        $* --override 'builds: gcc' --override 'network-builds: linux' 2>>EOE != 0
+          error: invalid --override option value: 'network-builds' override specified together with 'builds' override
+            info: override: network-builds: linux
+          EOE
+      }
+    }
+  }
+
+  : target-config
+  :
+  {
+    +$clone_root_prj
+    +$init -C @cfg &prj-cfg/***
+
+    test.options += --no-progress
+
+    : valid
+    :
+    {
+      $clone_prj;
+
+      $* --target-config 'linux**/x86_64**' --target-config 'freebsd**' 2>>~%EOE%
+        %CI request is queued.*%
+        %reference: .+%
+        EOE
+    }
+
+    : empty-config
+    :
+    {
+      $clone_prj;
+
+      $* --target-config '/x86_64**' 2>>EOE != 0
+        error: invalid --target-config option value: empty build configuration name pattern
+          info: override: build-include: /x86_64**
+        EOE
+    }
+
+    : empty-target
+    :
+    {
+      $clone_prj;
+
+      $* --target-config 'linux**/' 2>>EOE != 0
+        error: invalid --target-config option value: empty build target pattern
+          info: override: build-include: linux**/
+        EOE
+    }
+
+    : overrides
+    :
+    {
+      $clone_prj;
+
+      $* --target-config 'linux_debian_8-gcc_4.9' \
+         --override 'build-include: linux_debian_12-gcc_13' 2>>EOE != 0
+        error: invalid --override option value: 'build-include' override specified together with --target-config
+          info: override: build-include: linux_debian_12-gcc_13
+        EOE
+    }
+
+    : builds-overrides
+    :
+    {
+      $clone_prj;
+
+      $* --target-config 'linux_debian_8-gcc_4.9' --builds '&gcc' 2>>~%EOE%
+        %CI request is queued.*%
+        %reference: .+%
+        EOE
+    }
+
+    : interactive
+    :
+    {
+      $clone_prj;
+
+      $* --target-config 'linux**' --interactive 'linux_debian_8-gcc_4.9' 2>>EOE != 0
+        error: --target-config specified together with --interactive|-i
+        EOE
+    }
+
+    : package-config
+    :
+    {
+      $clone_prj;
+
+      $* --target-config 'linux**' --package-config 'default' 2>>EOE != 0
+        error: --target-config specified together with --package-config
+        EOE
+    }
+  }
+
+  : build-config
+  :
+  {
+    +$clone_root_prj
+    +$init -C @cfg &prj-cfg/***
+
+    test.options += --no-progress
+
+    : multiple
+    :
+    {
+      $clone_prj;
+
+      $* --build-config 'default/linux**/x86_64**' --build-config 'default/freebsd**' 2>>~%EOE%
+        %CI request is queued.*%
+        %reference: .+%
+        EOE
+    }
+
+    : invalid-package-config
+    :
+    {
+      $clone_prj;
+
+      $* --build-config 'default/linux**/x86_64**' --package-config 'cache' 2>>EOE != 0
+        error: invalid --package-config option value: package prj has no build configuration 'cache'
+        EOE
+    }
+
+    : with-package-config-option
+    :
+    {
+      $clone_prj;
+
+      $* --build-config 'default/linux**/x86_64**' --package-config 'network' 2>>~%EOE%
+        %CI request is queued.*%
+        %reference: .+%
+        EOE
+    }
+
+    : invalid-package-config-option
+    :
+    {
+      $clone_prj;
+
+      $* --build-config 'default/linux**/x86_64**' --package-config 'default' 2>>EOE != 0
+        error: package configuration default is specified using both --package-config and --build-config
+        EOE
+    }
+
+    : no-target-config
+    :
+    {
+      $clone_prj;
+
+      $* --build-config 'default' 2>>EOE != 0
+        error: invalid --build-config option value: no target configuration in 'default'
+        EOE
+    }
+
+    : empty-package-config
+    :
+    {
+      $clone_prj;
+
+      $* --build-config '/linux**/x86_64**' 2>>EOE != 0
+        error: invalid --build-config option value: no package configuration in '/linux**/x86_64**'
+        EOE
+    }
+
+    : empty-target-config
+    :
+    {
+      $clone_prj;
+
+      $* --build-config 'default//x86_64**' 2>>EOE != 0
+        error: invalid --build-config option value: empty build configuration name pattern
+          info: override: default-build-include: /x86_64**
+        EOE
+    }
+
+    : empty-target
+    :
+    {
+      $clone_prj;
+
+      $* --build-config 'default/linux**/' 2>>EOE != 0
+        error: invalid --build-config option value: empty build target pattern
+          info: override: default-build-include: linux**/
+        EOE
+    }
+
+    : overrides
+    :
+    {
+      $clone_prj;
+
+      $* --build-config 'default/linux_debian_8-gcc_4.9' --builds '&gcc' 2>>EOE != 0
+        error: invalid --build-config option value: 'default-builds' override specified together with 'builds' override
+          info: override: default-builds: all
+        EOE
+    }
+
+    : interactive
+    :
+    {
+      $clone_prj;
+
+      $* --build-config 'default/linux**' --interactive 'linux_debian_8-gcc_4.9' 2>>EOE != 0
+        error: --build-config specified together with --interactive|-i
+        EOE
+    }
+
+    : package-config
+    :
+    {
+      $clone_prj;
+
+      $* --build-config 'linux**' --target-config 'linux_debian_8-gcc_4.9' 2>>EOE != 0
+        error: --target-config specified together with --build-config
+        EOE
+    }
+  }
+
+  : package-config
+  :
+  {
+    +$clone_root_prj
+    +$init -C @cfg &prj-cfg/***
+
+    test.options += --no-progress
+
+    : valid
+    :
+    {
+      $clone_prj;
+
+      $* --package-config 'network' 2>>~%EOE%
+        %CI request is queued.*%
+        %reference: .+%
+        EOE
+    }
+
+    : interactive
+    :
+    {
+      $clone_prj;
+
+      $* --package-config 'default' --interactive 'linux_debian_8-gcc_4.9' 2>>EOE != 0
+        error: --package-config specified together with --interactive|-i
+        EOE
+    }
+  }
+
+  : interactive
+  :
+  {
+    +$clone_root_prj
+    +$init -C @cfg &prj-cfg/***
+
+    test.options += --no-progress
+
+    : target-config
+    :
+    {
+      $clone_prj;
+
+      $* --interactive 'linux_debian_8-gcc_4.9:warning' 2>>~%EOE%
+        %CI request is queued.*%
+        %reference: .+%
+        EOE
+    }
+
+    : package-target-config
+    :
+    {
+      $clone_prj;
+
+      $* --interactive 'network/linux_debian_8-gcc_4.9:warning' 2>>~%EOE%
+        %CI request is queued.*%
+        %reference: .+%
+        EOE
+    }
+
+    : package-target-config-target
+    :
+    {
+      $clone_prj;
+
+      $* --interactive 'network/linux_debian_8-gcc_4.9/aarch64**:warning' 2>>~%EOE%
+        %CI request is queued.*%
+        %reference: .+%
+        EOE
+    }
+
+    : def-breakpoint
+    :
+    {
+      $clone_prj;
+
+      $* --interactive 'linux_debian_8-gcc_4.9' 2>>~%EOE%
+        %CI request is queued.*%
+        %reference: .+%
+        EOE
+    }
+
+    : config-empty
+    :
+    {
+      $clone_prj;
+
+      $* --interactive '/warning' 2>>EOE != 0
+        error: invalid --interactive|-i option value '/warning': package configuration name is empty
+        EOE
+    }
+
+    : overrides
+    :
+    {
+      $clone_prj;
+
+      $* --interactive 'linux_debian_8-gcc_4.9' \
+         --override 'build-include: linux_debian_12-gcc_13' 2>>EOE != 0
+        error: invalid --override option value: 'build-include' override specified together with --interactive|-i
+          info: override: build-include: linux_debian_12-gcc_13
+        EOE
+    }
+
+    : overrides-builds
+    :
+    {
+      $clone_prj;
+
+      $* --interactive 'linux_debian_8-gcc_4.9' --builds '&gcc' 2>>~%EOE%
+        %CI request is queued.*%
+        %reference: .+%
+        EOE
+    }
+  }
+
+  : non-standard-version
+  :
+  : Test submitting a package with the non-standard version from a
+  : non-bdep-initialized project, using the forwarded build2 configuration.
+  :
+  {
+    cp --no-cleanup -pr ../../prj ./ &prj/***;
+    rm -r prj/.bdep/;
+
+    sed -i -e 's/^(version:) .*$/\1 12345/' prj/manifest;
+
+    sed -i \
+        -e 's/^(project =.*)$/\1\nversion = 12345/' \
+        -e 's/^using version$//' \
+        prj/build/bootstrap.build;
+
+    $g branch non-standard-version;
+    $g checkout non-standard-version;
+    $g -c core.safecrlf=false commit -a -m 'Change version';
+    $g push --set-upstream origin non-standard-version;
+
+    $build 'configure:' prj/@prj-cfg/,forward &prj/build/bootstrap/*** 2>!;
+
+    $* --no-progress --forward 2>>~%EOE%
+      %CI request is queued.*%
+      %reference: .+%
+      EOE
+  }
+}
+
+: multi-pkg
+:
+{
+  # Create the remote repository.
+  #
+  +mkdir --no-cleanup prj.git
+  +git -C prj.git -c init.defaultBranch=master init --bare --quiet &prj.git/***
+
+  # Create the local repository and push it to the remote one.
+  #
+  +$new -t empty prj &prj/***
+  +$new --package -t lib libprj -d prj
+  +$new --package -t exe prj    -d prj
+  +sed -i -e 's/^(version:) .*$/\1 1.0.1/' prj/libprj/manifest
+  +sed -i -e 's/^(version:) .*$/\1 1.0.1/' prj/prj/manifest
+
+  +$g config user.name 'Test Script'
+  +$g config user.email 'testscript@example.com'
+  +$g remote add origin $~/prj.git
+  +$g add '*'
+  +$g commit -m 'Create'
+  +$g push --set-upstream origin master
+
+  test.options += --no-progress
+
+  : both
+  :
+  {
+    $clone_prj;
+    $init -C @cfg &prj-cfg/***;
+
+    $* 2>>~%EOE%
+      %CI request is queued.*%
+      %reference: .+%
+      EOE
+  }
+
+  : diff-configs
+  :
+  {
+    $clone_prj;
+    $init -C @cfg1 -d prj/libprj &prj-cfg1/***;
+
+    # While at it, test that we fail for uninitialized package.
+    #
+    $* -d prj/prj 2>>EOE != 0;
+      error: package prj is not initialized in any default configuration(s)
+      EOE
+
+    $init -C @cfg2 --config-type host -d prj/prj &prj-cfg2/***;
+
+    $* 2>>~%EOE%
+      %CI request is queued.*%
+      %reference: .+%
+      EOE
+  }
+
+  : single
+  :
+  {
+    $clone_prj;
+    $init -C @cfg &prj-cfg/***;
+
+    # CI the single libprj package rather than the whole prj project.
+    #
+    test.arguments = $regex.apply($test.arguments, '^(prj)$', '\1/libprj');
+
+    $* 2>>~%EOE%
+      %CI request is queued.*%
+      %reference: .+%
+      EOE
+  }
+
+  : interactive
+  :
+  {
+    $clone_prj;
+    $init -C @cfg &prj-cfg/***;
+
+    $* --interactive 'linux_debian_8-gcc_4.9' 2>>EOE != 0
+      error: multiple packages specified with --interactive|-i
+      EOE
+  }
+
+  : prompt
+  :
+  {
+    $clone_prj;
+    $init -C @cfg &prj-cfg/***;
+
+    # Suppress the --yes option.
+    #
+    test.arguments = $regex.apply($test.arguments, '^(--yes)$', '');
+
+    $* <'y' 2>>~"%EOE%"
+      submitting:
+        to:      $server
+      %  in:      $repository#master@.{40}%
+
+        package: libprj
+        version: 1.0.1
+
+        package: prj
+        version: 1.0.1
+      %continue\\?.+ CI request is queued.*%
+      %reference: .+%
+      EOE
+  }
+}

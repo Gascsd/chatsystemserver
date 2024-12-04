@@ -1,0 +1,211 @@
+# file      : tests/rep-remove.testscript
+# license   : MIT; see accompanying LICENSE file
+
+.include common.testscript \
+         config.testscript \
+         remote.testscript \
+         remote-git.testscript
+
+# Source repository:
+#
+# rep-remove
+# |-- extra                     -> stable (prerequisite)
+# |   |-- libbar-1.1.0+1.tar.gz
+# |   `-- repositories.manifest
+# |
+# |-- math                      -> extra (prerequisite)
+# |   |-- libbar-1.0.0.tar.gz
+# |   `-- repositories.manifest
+# |
+# |-- stable                    -> math (prerequisite)
+# |   |-- libfoo-1.0.0.tar.gz
+# |   `-- repositories.manifest
+# |
+# `-- testing                   -> stable (complement), extra (prerequisite)
+# |   |-- libbar-2.0.0.tar.gz
+# |   `-- repositories.manifest
+# |
+# `-- alpha
+# |   |-- libbar-2.0.0.tar.gz
+# |   `-- repositories.manifest
+# |
+# `-- git
+#     `-- style-basic.git
+
+# Prepare repositories used by tests if running in the local mode.
+#
++if! $remote
+  cp -r $src/extra   $out/extra
+  cp -r $src/math    $out/math
+  cp -r $src/stable  $out/stable
+  cp -r $src/testing $out/testing
+  cp -r $src/alpha   $out/alpha
+
+  c = [cmdline] $rep_create 2>!
+
+  $c $out/extra   &$out/extra/packages.manifest
+  $c $out/math    &$out/math/packages.manifest
+  $c $out/stable  &$out/stable/packages.manifest
+  $c $out/testing &$out/testing/packages.manifest
+  $c $out/alpha   &$out/alpha/packages.manifest
+
+  # Create git repositories.
+  #
+  $git_extract $src/git/style-basic.tar &$out_git/state0/***
+end
+
+rep_add    += -d cfg 2>!
+rep_fetch  += -d cfg --auth all --trust-yes 2>!
+rep_list   += -d cfg --prerequisites --complements
+pkg_status += -d cfg
+
+: invalid-args
+:
+{
+  : clean-all
+  :
+  $* --clean --all 2>>EOE != 0
+  error: both --clean and --all|-a specified
+    info: run 'bpkg help rep-remove' for more information
+  EOE
+
+  : clean-repos
+  :
+  $* --clean $rep/extra 2>>EOE != 0
+  error: both --clean and repository argument specified
+    info: run 'bpkg help rep-remove' for more information
+  EOE
+
+  : all-repos
+  :
+  $* --all $rep/extra 2>>EOE != 0
+  error: both --all|-a and repository argument specified
+    info: run 'bpkg help rep-remove' for more information
+  EOE
+
+  : none
+  :
+  $* 2>>EOE != 0
+  error: repository name or location argument expected
+    info: run 'bpkg help rep-remove' for more information
+  EOE
+}
+
+: clean
+:
+{
+  $clone_cfg;
+  $rep_add $rep/extra && $rep_fetch;
+
+  $* --clean 2>>"EOE";
+    cleaned pkg:build2.org/rep-remove/extra
+    EOE
+
+  $rep_list >>"EOE";
+    pkg:build2.org/rep-remove/extra ($rep/extra)
+    EOE
+
+  $pkg_status libbar >'libbar unknown'
+}
+
+: all
+:
+{
+  $clone_cfg;
+  $rep_add $rep/extra && $rep_fetch;
+
+  $* --all 2>>"EOE";
+    removed pkg:build2.org/rep-remove/extra
+    EOE
+
+  $rep_list >:"";
+  $pkg_status libbar >'libbar unknown'
+}
+
+: by-name
+:
+{
+  $clone_cfg;
+  $rep_add $rep/extra && $rep_fetch;
+
+  $* 'pkg:build2.org/rep-remove/extra' 2>>"EOE";
+    removed pkg:build2.org/rep-remove/extra
+    EOE
+
+  $rep_list >:"";
+  $pkg_status libbar >'libbar unknown'
+}
+
+: prerequisites-cycle
+:
+{
+  $clone_cfg;
+  $rep_add $rep/testing && $rep_fetch;
+
+  $* $rep/testing 2>>"EOE";
+    removed pkg:build2.org/rep-remove/testing
+    EOE
+
+  $rep_list >:"";
+  $pkg_status libbar >'libbar unknown';
+  $pkg_status libfoo >'libfoo unknown'
+}
+
+: reacheable
+:
+{
+  $clone_cfg;
+  $rep_add $rep/testing && $rep_add $rep/math && $rep_fetch;
+
+  $* $rep/testing 2>>"EOE";
+    removed pkg:build2.org/rep-remove/testing
+    EOE
+
+  $rep_list >>"EOO";
+    pkg:build2.org/rep-remove/math ($rep/math)
+      prerequisite pkg:build2.org/rep-remove/extra ($rep/extra)
+        prerequisite pkg:build2.org/rep-remove/stable ($rep/stable)
+          prerequisite pkg:build2.org/rep-remove/math ($rep/math)
+    EOO
+
+  $pkg_status libbar >'libbar available [1.1.0+1] 1.0.0';
+  $pkg_status libfoo >'libfoo available [1.0.0]'
+}
+
+: package-locations
+:
+{
+  $clone_cfg;
+  $rep_add $rep/testing && $rep_add $rep/alpha && $rep_fetch;
+
+  $* $rep/testing 2>!;
+  $pkg_status libbar >'libbar available 2.0.0';
+
+  $* $rep/alpha 2>!;
+  $pkg_status libbar >'libbar unknown'
+}
+
+: git-rep
+:
+if! $git_supported
+{
+  # Skip git repository tests.
+  #
+}
+else
+{
+  rep = "$rep_git/state0"
+
+  : root-complement
+  :
+  : Test that git repository root complement is handled properly. Note that
+  : we also test that the repository state directory is removed. Otherwise
+  : the testscript would fail to cleanup the working directory.
+  :
+  $clone_root_cfg;
+  $rep_add "$rep/style-basic.git#master" && $rep_fetch;
+
+  $* "$rep/style-basic.git#master" 2>>~%EOO%
+    %removed git:.+style-basic#master%
+    EOO
+}

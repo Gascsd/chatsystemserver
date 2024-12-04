@@ -1,0 +1,1389 @@
+# file      : tests/wildcard/testscript
+# license   : MIT; see accompanying LICENSE file
+
+: path-name-match
+:
+{
+  test.options = -mn
+
+  $* foo  foo/ == 1 : dir-vs-file
+  $* foo/ foo  == 1 : file-vs-dir
+
+  : no-star
+  :
+  {
+    : match
+    :
+    {
+      $* foo/ foo/ : dir
+      $* foo  foo  : file
+      $* foo  f?o  : qmark
+      $* ''   ''   : empty
+    }
+
+    : no-match
+    :
+    {
+      $* foo oo   == 1 : name-char
+      $* oo  foo  == 1 : pattern-char
+    }
+  }
+
+  : with-star
+  :
+  {
+    : no-backtracking
+    :
+    {
+      : match
+      :
+      {
+        $* ''      *       : empty
+        $* foo.txt *.txt   : suffix-only
+        $* foo.txt foo*    : prefix-only
+        $* foo.txt f*.txt  : prefix-suffix
+      }
+
+      : no-match
+      :
+      {
+        $* foo.txt fox* == 1 : pattern-prefix-char
+        $* fo      foo* == 1 : short-name
+      }
+    }
+
+    : backtracking
+    :
+    {
+      : match
+      :
+      {
+        $* ''      **    : empty1
+        $* ''      ***   : empty2
+        $* f.txt   f*.*  : empty3
+        $* f.txt   f**.* : empty4
+        $* foo.txt f*.*  : non-empty
+        $* foo-txt f*?*  : qmark
+      }
+
+      : no-match
+      :
+      {
+        $* foo-txt f*.* == 1
+      }
+    }
+  }
+
+  : bracket
+  :
+  {
+    : ordinary-char
+    :
+    {
+      $* abd a[bc]d        : first
+      $* abd a[0-9b]d      : after-range
+      $* acd a[bc]d        : last
+      $* a]d a[]bc]d       : closing-bracket
+      $* a-d a[-bc]d       : first-dash
+      $* a-d a[bc-]d       : last-dash
+      $* a*d a[*]d         : star
+      $* a?d a[?]d         : question
+      $* a[d a[[]d         : open-bracket
+      $* abd a[xy]d   == 1 : not-match
+
+      : not-expr
+      :
+      {
+        $* a[b  a[b  : not-closed
+        $* a[!b a[!b : not-closed-inverse
+        $* a[]b a[]b : empty
+        $* a[!] a[!] : empty-inverse
+      }
+    }
+
+    : range
+    :
+    {
+      $* a0d a[0-8]d        : min
+      $* a8d a[0-8]d        : max
+      $* a5d a[0-8]d        : mid
+      $* a9d a[0-8]d   == 1 : out
+      $* a1d a[a0-8]d       : after-char
+      $* abd a[x0-9y]d == 1 : not-match
+    }
+
+    : inverse
+    :
+    {
+      $* abd a[!xy]d      : match
+      $* abd a[!ab]d == 1 : not-match
+    }
+  }
+
+  : mixed
+  :
+  : Test patterns combining backtracking with the bracket expressions.
+  :
+  {
+    $* 9axb   [0-9]a*b        : bracket-star
+    $* axyb0  a*b[0-9]        : star-bracket
+    $* ab1xzy a*b[0-9]x*y     : star-bracket-star
+    $* ax2xyb a*[0-9]x*y[a-z] : star-bracket-star-bracket
+  }
+
+  : case-sensitivity
+  :
+  : Test that matching is case-insensitive on Windows and sensitive otherwise.
+  :
+  if ($cxx.target.class != 'windows')
+  {
+    $* foo/ F*O/     == 1
+    $* foo/ f[A-Z]o/ == 1
+  }
+  else
+  {
+    $* foo/ F*O/
+    $* foo/ f[A-Z]o/
+  }
+}
+
+: path-directory-search
+:
+: Note that we always need to make sure that no auxiliary files (stdout, etc)
+: are created in the directories we search through not to end up with a race
+: condition (trying to query type of a removed filesystem entry, etc).
+:
+{
+  test.options = -sd
+
+  : start
+  :
+  {
+    : empty
+    :
+    $* * >>/EOO
+    stderr
+    stdout
+    EOO
+
+    : relative
+    :
+    mkdir -p foo/fox/bar;
+    $* ba*/ foo/fox >>/EOO
+    bar/
+    EOO
+
+    : absolute
+    :
+    : When cross-testing we cannot guarantee that host absolute paths are
+    : recognized by the target process.
+    :
+    if ($test.target == $build.host)
+    {
+      wd = $~
+      +mkdir -p foo/bar
+
+      : dir
+      :
+      $* ba*/ "$wd/foo" >>/EOO
+      bar/
+      EOO
+
+      : pattern
+      :
+      $* "$wd/foo/ba*/" >>/"EOO"
+      $wd/foo/bar/
+      EOO
+    }
+  }
+
+  : pattern
+  :
+  {
+    : simple
+    :
+    {
+      : file
+      :
+      {
+        +mkdir -p foo/bar
+        +touch foo/baz foo/box foo/bar/bar foo/bar/fox
+
+        : immediate
+        :
+        $* b* ../foo >>EOO
+        baz
+        box
+        EOO
+
+        : recursive
+        :
+        $* ba** ../foo >>/EOO
+        bar/bar
+        baz
+        EOO
+
+        : recursive-with-brackets
+        :
+        $* **[!xy][rz] ../foo >>/EOO
+        bar/bar
+        baz
+        EOO
+
+        : self-recursive
+        :
+        {
+          : start
+          :
+          $* f*** ../../foo >>/EOO
+          bar/fox
+          EOO
+
+          : current
+          :
+          mkdir -p bar/fox;
+          touch bar/fox/cox;
+          $* c*** >>/EOO
+          bar/fox/cox
+          EOO
+        }
+      }
+
+      : dir
+      :
+      {
+        +mkdir -p foo/bar/bar foo/bar/fox/
+        +touch foo/baz
+
+        : immediate
+        :
+        $* b*/ ../foo >>/EOO
+        bar/
+        EOO
+
+        : recursive
+        :
+        $* -n b**/ ../foo >>/EOO
+        bar/bar/
+        bar/
+        EOO
+
+        : self-recursive
+        :
+        {
+          : start
+          :
+          : Note that the start dir is represented as an empty path being
+          : found.
+          :
+          $* f***/ ../../foo >>/EOO
+
+          bar/fox/
+          EOO
+
+          : current
+          :
+          mkdir -p bar/cox/box/;
+          $* c***/ >>/EOO
+
+          bar/cox/
+          EOO
+        }
+      }
+    }
+
+    : compound
+    :
+    {
+      : file
+      :
+      {
+        +mkdir -p wd/foo wd/fox wd/fix/bar wd/baz/foo/zab wd/baz/foo/zab/baz
+        +touch wd/foo/bar wd/foo/fox wd/fox/baz wd/baz/foo/zab/bar
+
+        wd = ../wd
+
+        : immediate
+        :
+        $* f*/b* $wd >>/EOO
+        foo/bar
+        fox/baz
+        EOO
+
+        : recursive
+        :
+        $* f**/b** $wd >>/EOO
+        baz/foo/zab/bar
+        foo/bar
+        fox/baz
+        EOO
+
+        : self-recursive
+        :
+        {
+          wd = ../../wd
+
+          : pattern
+          :
+          $* foo/f*** $wd >>/EOO
+          foo/fox
+          EOO
+
+          : start
+          :
+          $* f*** $wd/foo >>/EOO
+          fox
+          EOO
+
+          : current
+          :
+          mkdir -p bar;
+          touch bar/cox;
+          $* c*** >>/EOO
+          bar/cox
+          EOO
+        }
+      }
+
+      : dir
+      :
+      {
+        +mkdir -p wd/foo/bar wd/foo/fox/box wd/fox/baz wd/fix wd/baz/foo/zab/baz
+        +touch wd/fix/bar wd/baz/foo/zab/bar
+
+        wd = ../wd
+
+        : immediate
+        :
+        $* f*/b*/ $wd >>/EOO
+        foo/bar/
+        fox/baz/
+        EOO
+
+        : recursive
+        :
+        $* f**/b**/ $wd >>/EOO
+        baz/foo/zab/baz/
+        foo/bar/
+        foo/fox/box/
+        foo/fox/box/
+        fox/baz/
+        EOO
+
+        : self-recursive
+        :
+        {
+          wd = ../../wd
+
+          : pattern
+          :
+          $* foo/f***/b**/ $wd >>/EOO
+          foo/bar/
+          foo/fox/box/
+          foo/fox/box/
+          EOO
+
+          : start
+          :
+          $* f***/b**/ $wd/foo >>/EOO
+          bar/
+          fox/box/
+          fox/box/
+          EOO
+
+          : current
+          :
+          mkdir -p bar/cox/box/;
+          $* c***/b**/ >>/EOO
+          bar/
+          bar/cox/box/
+          bar/cox/box/
+          EOO
+        }
+      }
+    }
+
+    : fast-forward
+    :
+    {
+      +mkdir -p wd/foo/bar/baz wd/foo/box
+      +touch wd/foo/bar/baz/fox
+
+      : partial
+      :
+      {
+        wd = ../../wd
+
+        : file
+        :
+        $* foo/ba*/baz/f* $wd >>/EOO
+        foo/bar/baz/fox
+        EOO
+
+        : dir
+        :
+        $* foo/b*/baz/ $wd >>/EOO
+        foo/bar/baz/
+        EOO
+      }
+
+      : reduce
+      :
+      {
+        wd = ../../../wd
+
+        : exists
+        :
+        {
+          : file
+          :
+          $* fo?/bar/baz/fox $wd >>/EOO
+          foo/bar/baz/fox
+          EOO
+
+          : dir
+          :
+          $* fo?/bar/baz/ $wd >>/EOO
+          foo/bar/baz/
+          EOO
+
+          : parent
+          :
+          $* fo?/box/../bar/baz/fox $wd >>/EOO
+          foo/box/../bar/baz/fox
+          EOO
+        }
+
+        : not-exists
+        :
+        {
+          $* fo?/bar/baz/foz        $wd == 1 : file
+          $* fo?/bar/bax/           $wd == 1 : dir
+          $* fo?/bar/baz/fox/       $wd == 1 : not-dir
+          $* fo?/bix/../bar/baz/foz $wd == 1 : parent
+        }
+      }
+    }
+  }
+
+  : dot-started
+  :
+  {
+    +mkdir -p wd/z/.z/.z wd/z/z wd/a/.z wd/.a/.z
+    +touch wd/z/.z.cxx wd/z/z.cxx wd/z/.z/.z.cxx wd/z/.z/z.cxx wd/z/z/.z.cxx \
+           wd/z/z/z.cxx wd/a/z.cxx wd/a/.z.cxx wd/.a/z.cxx wd/.a/.z.cxx
+
+    wd=../../../wd
+
+    : recursive
+    :
+    {
+      : simple
+      :
+      {
+        : file
+        :
+        $* *z**.cxx $wd >>/EOO
+        a/z.cxx
+        z/z.cxx
+        z/z/z.cxx
+        EOO
+
+        : dot-leading-file
+        :
+        $* .z**.cxx $wd >>/EOO
+        a/.z.cxx
+        z/.z.cxx
+        z/z/.z.cxx
+        EOO
+
+        : dir
+        :
+        $* **z/ $wd >>/EOO
+        z/
+        z/z/
+        EOO
+
+        : dot-leading-dir
+        :
+        $* .**z/ $wd >>/EOO
+        a/.z/
+        z/.z/
+        EOO
+      }
+
+      : z-compound
+      :
+      {
+        : not-dot-leading
+        :
+        $* **z/*z.cxx $wd >>/EOO
+        z/z.cxx
+        z/z/z.cxx
+        EOO
+
+        : dot-leading
+        :
+        $* .z**/*z.cxx $wd >>/EOO
+        z/.z/z.cxx
+        EOO
+      }
+
+      : compound
+      :
+      {
+        : not-dot-leading
+        :
+        $* **/*z.cxx $wd >>/EOO
+        a/z.cxx
+        z/z.cxx
+        z/z/z.cxx
+        EOO
+
+        : dot-leading
+        :
+        $* .**/*z.cxx $wd >>/EOO
+        .a/z.cxx
+        z/.z/z.cxx
+        EOO
+      }
+
+      : self
+      :
+      {
+        : not-dot-leading
+        :
+        $* *z***/*z.cxx $wd/z >>/EOO
+        z.cxx
+        z/z.cxx
+        EOO
+
+        : dot-leading
+        :
+        $* .z***/*z.cxx $wd/z >>/EOO
+        .z/z.cxx
+        EOO
+      }
+    }
+
+    : immediate
+    :
+    {
+      : simple
+      :
+      {
+        : file
+        :
+        $* *z*.cxx $wd/z >>/EOO
+        z.cxx
+        EOO
+
+        : dot-leading-file
+        :
+        $* .z*.cxx $wd/z >>/EOO
+        .z.cxx
+        EOO
+
+        : file-dot-leading-start
+        :
+        $* *z*.cxx $wd/z/.z >>/EOO
+        z.cxx
+        EOO
+
+        : dot-leading-file-dot-leading-start
+        :
+        $* .z*.cxx $wd/z/.z >>/EOO
+        .z.cxx
+        EOO
+
+        : dir
+        :
+        $* *z/ $wd/ >>/EOO
+        z/
+        EOO
+
+        : dot-leading-dir
+        :
+        $* .*z/ $wd/z >>/EOO
+        .z/
+        EOO
+      }
+
+      : z-compound
+      :
+      {
+        : not-dot-leading
+        :
+        $* *z/*z.cxx $wd/z >>/EOO
+        z/z.cxx
+        EOO
+
+        : dot-leading
+        :
+        $* .z*/*z.cxx $wd/z >>/EOO
+        .z/z.cxx
+        EOO
+      }
+
+      : compound
+      :
+      {
+        : not-dot-leading
+        :
+        $* */*z.cxx $wd >>/EOO
+        a/z.cxx
+        z/z.cxx
+        EOO
+
+        : dot-leading
+        :
+        $* .*/*z.cxx $wd >>/EOO
+        .a/z.cxx
+        EOO
+      }
+    }
+  }
+
+  : dangling-link
+  :
+  if ($cxx.target.class != 'windows')
+  {
+    mkdir a;
+    touch --no-cleanup a/b;
+    ln -s b a/l &a/l;
+    rm a/b;
+
+    touch a/c;
+
+    $* a/* 2>! == 3;
+    $* -d 'print' a/* >/'a/c' 2>/'a/l';
+    $* -d 'stop'  a/* >!      2>/'a/l' == 1
+  }
+}
+
+: path-entry-search
+:
+{
+  test.options = -sp
+
+  : match
+  :
+  {
+    : fast-forward
+    :
+    {
+      : partial
+      :
+      $* foo/fox foo/f** >>/EOO
+      foo/fox
+      EOO
+
+      : reduce
+      :
+      {
+        : file
+        :
+        $* foo foo >>EOO
+        foo
+        EOO
+
+        : dir
+        :
+        $* foo/ foo/ >>/EOO
+        foo/
+        EOO
+      }
+    }
+
+    : iterating
+    :
+    {
+      : simple
+      :
+      {
+        : immediate
+        :
+        {
+          : file
+          :
+          $* foo f* >>EOO
+          foo
+          EOO
+
+          : dir
+          :
+          $* foo/ f*/ >>/EOO
+          foo/
+          EOO
+        }
+
+        : distant
+        :
+        {
+          : file
+          :
+          $* foo/bar f*/b* >>/EOO
+          foo/bar
+          EOO
+
+          : dir
+          :
+          $* foo/bar/ f*/b*/ >>/EOO
+          foo/bar/
+          EOO
+        }
+      }
+
+      : recursive
+      :
+      {
+        : immediate
+        :
+        {
+          : file
+          :
+          $* foo f** >>EOO
+          foo
+          EOO
+
+          : dir
+          :
+          $* foo/ f**/ >>/EOO
+          foo/
+          EOO
+        }
+
+        : distant
+        :
+        {
+          : file
+          :
+          $* foo/fox f** >>/EOO
+          foo/fox
+          EOO
+
+          : dir
+          :
+          $* foo/fox/ f**/ >>/EOO
+          foo/
+          foo/fox/
+          EOO
+        }
+      }
+
+      : self
+      :
+      {
+        : immediate
+        :
+        {
+          : file
+          :
+          $* foo f*** fox/ >>EOO
+          foo
+          EOO
+
+          : dir
+          :
+          $* foo/ f***/ fox/ >>/EOO
+
+          foo/
+          EOO
+        }
+
+        : distant
+        :
+        {
+          : file
+          :
+          $* foo/fox f*** >>/EOO
+          foo/fox
+          EOO
+
+          : dir
+          :
+          $* foo/fox/ f***/ foo/ >>/EOO
+
+          foo/
+          foo/fox/
+          EOO
+        }
+      }
+    }
+
+    : absolute
+    :
+    : When cross-testing we can't guarantee that host absolute paths are
+    : recognized by the target process.
+    :
+    if ($test.target == $build.host)
+    {
+      wd = $~
+
+      : both
+      :
+      {
+        : reduce
+        :
+        $* $wd/foo $wd/foo >>/"EOO"
+        $wd/foo
+        EOO
+
+        : iterate
+        :
+        $* $wd/foo/fox/ $wd/f**/ >>/"EOO"
+        $wd/foo/
+        $wd/foo/fox/
+        EOO
+      }
+
+      : pattern
+      :
+      {
+        : reduce
+        :
+        $* foo $wd/foo $wd >>/"EOO"
+        $wd/foo
+        EOO
+
+        : iterate
+        :
+        $* foo/fox/ $wd/f**/ >>/"EOO"
+        $wd/pattern/iterate/foo/
+        $wd/pattern/iterate/foo/fox/
+        EOO
+      }
+
+      : entry
+      :
+      {
+        : reduce
+        :
+        $* $wd/foo foo $wd >>/"EOO"
+        foo
+        EOO
+
+        : iterate
+        :
+        $* $wd/entry/iterate/foo/fox/ f**/ >>/"EOO"
+        foo/
+        foo/fox/
+        EOO
+      }
+    }
+  }
+
+  : no-match
+  :
+  {
+    : fast-forward
+    :
+    {
+      : partial
+      :
+      $* fox/bar/baz/fix foo/f** == 1
+
+      : reduce
+      :
+      {
+        : file
+        :
+        {
+          : not-exists
+          :
+          $* foo fox == 1
+
+          : not-file
+          :
+          $* foo/ foo == 1
+
+          : empy
+          :
+          {
+            : both
+            :
+            $* '' '' == 1
+
+            : pattern
+            :
+            $* foo '' == 1
+
+            : path
+            :
+            $* '' foo == 1
+          }
+        }
+
+        : dir
+        :
+        {
+          : not-exists
+          :
+          $* fox/ foo/ == 1
+
+          : not-dir
+          :
+          $* foo foo/ == 1
+
+          : empy
+          :
+          {
+            : pattern
+            :
+            $* foo/ '' == 1
+
+            : path
+            :
+            $* '' foo/ == 1
+          }
+        }
+      }
+    }
+
+    : iterating
+    :
+    {
+      : simple
+      :
+      {
+        : immediate
+        :
+        {
+          : file
+          :
+          {
+            : not-exists
+            :
+            $* bar f* == 1
+
+            : not-file
+            :
+            $* foo/ f* == 1
+
+            : empty
+            :
+            $* '' f* == 1
+          }
+
+          : dir
+          :
+          {
+            : not-exists
+            :
+            $* bar/ f*/ == 1
+
+            : not-dir
+            :
+            $* foo f*/ == 1
+
+            : empty
+            :
+            $* '' f*/ == 1
+          }
+        }
+
+        : distant
+        :
+        {
+          : file
+          :
+          {
+            : not-exists-other
+            :
+            $* foo/fox f*/b* == 1
+
+            : not-exists-none
+            :
+            $* foo/ f*/b* == 1
+
+            : not-file
+            :
+            $* foo/bar/ f*/b* == 1
+          }
+
+          : dir
+          :
+          {
+            : not-exists-other
+            :
+            $* foo/fox/ f*/b*/ == 1
+
+            : not-exists-none
+            :
+            $* foo/ f*/b*/ == 1
+
+            : not-dir
+            :
+            $* foo/bar f*/b*/ == 1
+          }
+        }
+      }
+
+      : recursive
+      :
+      {
+        : immediate
+        :
+        {
+          : file
+          :
+          {
+            : not-exists
+            :
+            $* bar f** == 1
+
+            : not-file
+            :
+            $* foo/ f** == 1
+          }
+
+          : dir
+          :
+          {
+            : not-exists
+            :
+            $* bar/ f**/ == 1
+
+            : not-dir
+            :
+            $* foo f**/ == 1
+          }
+        }
+
+        : distant
+        :
+        {
+          : file
+          :
+          {
+            : not-exists-other
+            :
+            $* foo/bar f** == 1
+
+            : not-exists-none
+            :
+            $* foo/ f** == 1
+
+            : not-file
+            :
+            $* foo/fox/ f** == 1
+          }
+
+          : dir
+          :
+          {
+            : not-exists-other
+            :
+            $* foo/fox/ f*/b*/ == 1
+
+            : not-exists-none
+            :
+            $* foo/ f*/b*/ == 1
+
+            : not-dir
+            :
+            $* foo/bar f*/b*/ == 1
+          }
+        }
+      }
+
+
+      : self
+      :
+      {
+        : immediate
+        :
+        {
+          : file
+          :
+          {
+            : not-exists
+            :
+            $* bar f*** baz/ == 1
+
+            : not-file
+            :
+            $* foo/ f*** fox/ == 1
+          }
+
+          : dir
+          :
+          {
+            : not-exists
+            :
+            $* bar/ f***/ baz/ == 1
+
+            : not-dir
+            :
+            $* foo f***/ == 1
+          }
+        }
+
+        : distant
+        :
+        {
+          : file
+          :
+          {
+            : not-exists-other
+            :
+            $* foo/bar f*** == 1
+
+            : not-exists-none
+            :
+            $* foo/ f*** == 1
+
+            : not-file
+            :
+            $* foo/fox/ f*** fix/ == 1
+          }
+
+          : dir
+          :
+          {
+            : not-exists-other
+            :
+            $* bar/baz/ f***/ bak/ == 1
+
+            : not-exists-none
+            :
+            $* bar/ f***/ == 1
+
+            : not-dir
+            :
+            $* bar/foo f***/ == 1
+          }
+        }
+      }
+    }
+
+    : absolute
+    :
+    : When cross-testing we can't guarantee that host absolute paths are
+    : recognized by the target process.
+    :
+    if ($test.target == $build.host)
+    {
+      : reduce
+      :
+      {
+        : file
+        :
+        {
+          : not-exists
+          :
+          $* $~/fox foo == 1
+
+          : not-file
+          :
+          $* foo/ $~/foo == 1
+        }
+
+        : dir
+        :
+        {
+          : not-exists
+          :
+          $* fox/ $~/foo/ == 1
+
+          : not-dir
+          :
+          $* $~/foo foo/ == 1
+        }
+      }
+
+      : iterating
+      :
+      {
+        : file
+        :
+        {
+          : not-exists-other
+          :
+          $* foo/bar $~/f** == 1
+
+          : not-exists-none
+          :
+          $* $~/foo/ f** == 1
+
+          : not-file
+          :
+          $* $~/foo/fox/ $~/f** == 1
+        }
+
+        : dir
+        :
+        {
+          : not-exists-other
+          :
+          $* $~/foo/fox/ $~/f*/b*/ == 1
+
+          : not-exists-none
+          :
+          $* foo/ $~/f*/b*/ == 1
+
+          : not-dir
+          :
+          $* $~/foo/bar f*/b*/ == 1
+        }
+      }
+    }
+  }
+
+  : ignorable-components
+  :
+  {
+    test.options += -i -n
+
+    : middle
+    :
+    {
+      $* a/b   a/*/b  >/ a/b
+      $* a/x/b a/*/b  >/ a/x/b
+      $* a/b   a/**/b >/ a/b
+      $* a/x/b a/**/b >/ a/x/b
+
+      $* a/b a/***/b >>/EOO
+        a/b
+        a/b
+        EOO
+
+      : multiple
+      :
+      {
+        $* a/b a/**/*/b >/ a/b
+
+        $* a/x/b a/**/*/b >>/EOO
+          a/x/b
+          a/x/b
+          EOO
+      }
+    }
+
+    : top-level
+    :
+    if ($cxx.target.class != 'windows')
+    {
+      $* /a   /*/a > /a
+      $* /b/a /*/a > /b/a
+
+      : multiple
+      :
+      {
+        $* /a /*/*/a > /a
+
+        $* /b/a /*/*/a >>EOO
+          /b/a
+          /b/a
+          EOO
+      }
+    }
+
+    : leading
+    :
+    {
+      $* a   */a >/ a
+      $* b/a */a >/ b/a
+
+      : multiple
+      :
+      {
+        $* a */*/a >/ a
+
+        $* b/a */*/a >>/EOO
+          b/a
+          b/a
+          EOO
+      }
+    }
+
+    : trailing
+    :
+    {
+      : file
+      :
+      : Test that the pattern star-only component of the file type does not
+      : match an absent component.
+      :
+      {
+        $* a/b a/* >/ a/b
+
+        $* a    a/* == 1
+        $* a/   a/* == 1
+        $* a/b/ a/* == 1
+
+        : multiple
+        :
+        {
+          $* a/b a/*/* >/ a/b
+
+          $* a    a/*/* == 1
+          $* a/   a/*/* == 1
+          $* a/b/ a/*/* == 1
+        }
+      }
+
+      : dir
+      :
+      {
+        $* a/  a/*/ >/ a/
+        $* a/b a/*/ >/ a/
+
+        $* a/b/ a/*/ >>/EOO
+          a/b/
+          a/
+          EOO
+
+        $* a a/*/ == 1
+
+        : multiple
+        :
+        {
+          $* a/  a/*/*/ >/ a/
+          $* a/b a/*/*/ >/ a/
+
+          $* a/b/ a/*/*/ >>/EOO
+            a/b/
+            a/b/
+            a/
+            EOO
+
+          $* a a/*/*/ == 1
+        }
+      }
+    }
+
+    : leading-trailing
+    {
+      : adjacent
+      :
+      {
+        $* a   */* >/ a
+        $* a/b */* >/ a/b
+
+        $* a/ */* == 1
+      }
+
+      : apart
+      :
+      {
+        $* a/b   */a/* >/ a/b
+        $* c/a/b */a/* >/ c/a/b
+
+        $* a    */a/* == 1
+        $* b/a  */a/* == 1
+        $* b/a/ */a/* == 1
+
+        : recursive
+        :
+        {
+          $* a/b/c/d       **/a/** >/ a/b/c/d
+          $* d/c/b/a/b/c/d **/a/** >/ d/c/b/a/b/c/d
+
+          $* a       **/a/** == 1
+          $* d/c/b/a **/a/** == 1
+        }
+      }
+    }
+  }
+}

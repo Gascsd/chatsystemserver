@@ -1,0 +1,9 @@
+# bar/unstable
+#
+: 1
+location: ../../foo/testing
+role: prerequisite
+:
+location: ../testing
+role: complement
+:

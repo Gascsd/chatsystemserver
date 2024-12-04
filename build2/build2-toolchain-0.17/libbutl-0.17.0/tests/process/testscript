@@ -1,0 +1,16 @@
+# file      : tests/process/testscript
+# license   : MIT; see accompanying LICENSE file
+
+if ($cxx.target.class == 'windows')
+  cat <<EOI >=test.bat
+    @echo off
+    setlocal
+    goto end
+    :error
+    endlocal
+    exit /b 1
+    :end
+    endlocal
+    EOI
+end;
+$*

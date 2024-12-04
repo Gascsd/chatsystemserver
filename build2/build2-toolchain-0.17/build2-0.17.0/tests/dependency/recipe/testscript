@@ -1,0 +1,879 @@
+# file      : tests/dependency/recipe/testscript
+# license   : MIT; see accompanying LICENSE file
+
+.include ../../common.testscript
+
+# Note: in the parser we have to handle recipes for the with/without
+# prerequisites cases separately. So we try to cover both here.
+
+: basics
+:
+$* <<EOI 2>>/~%EOE%
+alias{x}: alias{z}
+{{
+  echo
+}}
+dump alias{x}
+EOI
+<stdin>:5:1: dump:
+%  .+/alias\{x\}: .+/:alias\{z\}%
+  % [diag=echo] perform(update)
+  {{
+    echo
+  }}
+EOE
+
+: basics-replay
+:
+$* <<EOI 2>>/~%EOE%
+alias{x y}: alias{z}
+{{
+  echo
+}}
+dump alias{y}
+EOI
+<stdin>:5:1: dump:
+%  .+/alias\{y\}: .+/:alias\{z\}%
+  % [diag=echo] perform(update)
+  {{
+    echo
+  }}
+EOE
+
+: basics-header
+:
+$* <<EOI 2>>/~%EOE%
+alias{x}:
+% update clean
+{{
+  echo
+}}
+dump alias{x}
+EOI
+<stdin>:6:1: dump:
+%  .+/alias\{x\}:%
+  % [diag=echo] perform(update) perform(clean)
+  {{
+    echo
+  }}
+EOE
+
+: basics-header-replay
+:
+$* <<EOI 2>>/~%EOE%
+alias{x y}:
+% perform(update clean)
+{{
+  echo
+}}
+dump alias{y}
+EOI
+<stdin>:6:1: dump:
+%  .+/alias\{y\}:%
+  % [diag=echo] perform(update) perform(clean)
+  {{
+    echo
+  }}
+EOE
+
+: basics-lang
+:
+$* <<EOI 2>>/~%EOE%
+alias{x}:
+{{ c++ 1
+  void f ();
+}}
+dump alias{x}
+EOI
+<stdin>:5:1: dump:
+%  .+/alias\{x\}:%
+  % perform(update)
+  {{ c++ 1
+    void f ();
+  }}
+EOE
+
+: with-vars
+:
+$* <<EOI 2>>/~%EOE%
+alias{x}:
+{
+  var = x
+}
+{{
+  echo
+}}
+dump alias{x}
+EOI
+<stdin>:8:1: dump:
+%  .+/alias\{x\}:%
+  {
+    var = x
+  }
+  % [diag=echo] perform(update)
+  {{
+    echo
+  }}
+EOE
+
+: with-vars-replay
+:
+$* <<EOI 2>>/~%EOE%
+alias{x y}: alias{z}
+{
+  var = x
+}
+{{
+  echo
+}}
+dump alias{y}
+EOI
+<stdin>:8:1: dump:
+%  .+/alias\{y\}: .+/:alias\{z\}%
+  {
+    var = x
+  }
+  % [diag=echo] perform(update)
+  {{
+    echo
+  }}
+EOE
+
+: with-vars-depchain
+:
+$* <<EOI 2>>/~%EOE%
+./: alias{x}: alias{y}
+{
+  var = x
+}
+{{
+  echo
+}}
+dump alias{x}
+EOI
+<stdin>:8:1: dump:
+%  .+/alias\{x\}: .+/:alias\{y\}%
+  {
+    var = x
+  }
+  % [diag=echo] perform(update)
+  {{
+    echo
+  }}
+EOE
+
+: with-vars-replay-depchain
+:
+$* <<EOI 2>>/~%EOE%
+./: alias{x y}: alias{z}
+{
+  var = x
+}
+{{
+  echo
+}}
+dump alias{y}
+EOI
+<stdin>:8:1: dump:
+%  .+/alias\{y\}: .+/:alias\{z\}%
+  {
+    var = x
+  }
+  % [diag=echo] perform(update)
+  {{
+    echo
+  }}
+EOE
+
+: with-vars-header
+:
+$* <<EOI 2>>/~%EOE%
+alias{x}: alias{z}
+{
+  var = x
+}
+% perform(update)
+{{
+  echo
+}}
+dump alias{x}
+EOI
+<stdin>:9:1: dump:
+%  .+/alias\{x\}: .+/:alias\{z\}%
+  {
+    var = x
+  }
+  % [diag=echo] perform(update)
+  {{
+    echo
+  }}
+EOE
+
+: with-vars-header-replay
+:
+$* <<EOI 2>>/~%EOE%
+alias{x y}:
+{
+  var = x
+}
+% perform(update)
+{{
+  echo
+}}
+dump alias{y}
+EOI
+<stdin>:9:1: dump:
+%  .+/alias\{y\}:%
+  {
+    var = x
+  }
+  % [diag=echo] perform(update)
+  {{
+    echo
+  }}
+EOE
+
+: chain
+:
+$* <<EOI 2>>/~%EOE%
+alias{x}:
+{{
+  echo
+}}
+% clean
+{{{
+  cat
+}}}
+dump alias{x}
+EOI
+<stdin>:9:1: dump:
+%  .+/alias\{x\}:%
+  % [diag=echo] perform(update)
+  {{
+    echo
+  }}
+  % [diag=cat] perform(clean)
+  {{{
+    cat
+  }}}
+EOE
+
+: chain-replay
+:
+$* <<EOI 2>>/~%EOE%
+alias{x y}: alias{z}
+{{
+  echo
+}}
+% clean
+{{{
+  cat
+}}}
+dump alias{y}
+EOI
+<stdin>:9:1: dump:
+%  .+/alias\{y\}: .+/:alias\{z\}%
+  % [diag=echo] perform(update)
+  {{
+    echo
+  }}
+  % [diag=cat] perform(clean)
+  {{{
+    cat
+  }}}
+EOE
+
+: chain-header
+:
+$* <<EOI 2>>/~%EOE%
+alias{x}: alias{z}
+% clean
+{{
+  echo
+}}
+
+% update
+{{{
+  cat
+}}}
+dump alias{x}
+EOI
+<stdin>:11:1: dump:
+%  .+/alias\{x\}: .+/:alias\{z\}%
+  % [diag=echo] perform(clean)
+  {{
+    echo
+  }}
+  % [diag=cat] perform(update)
+  {{{
+    cat
+  }}}
+EOE
+
+: chain-header-replay
+:
+$* <<EOI 2>>/~%EOE%
+alias{x y}:
+
+% clean
+{{
+  echo
+}}
+
+% update
+{{{
+  cat
+}}}
+dump alias{y}
+EOI
+<stdin>:12:1: dump:
+%  .+/alias\{y\}:%
+  % [diag=echo] perform(clean)
+  {{
+    echo
+  }}
+  % [diag=cat] perform(update)
+  {{{
+    cat
+  }}}
+EOE
+
+: unterminated
+:
+$* <<EOI 2>>EOE != 0
+alias{x}:
+{{{
+  echo
+}}
+EOI
+<stdin>:5:1: error: unterminated recipe block
+  <stdin>:2:1: info: recipe block starts here
+EOE
+
+: expected-lang
+:
+$* <<EOI 2>>EOE != 0
+alias{x}:
+{{ $lang
+  echo
+}}
+EOI
+<stdin>:2:4: error: expected recipe language instead of '$'
+EOE
+
+: header-attribute
+:
+$* <<EOI 2>>/~!EOE!
+alias{x}:
+% [diag=gen]
+{{
+  echo
+}}
+dump alias{x}
+EOI
+<stdin>:6:1: dump:
+!  .+/alias\{x\}:!
+  % [diag=gen] perform(update)
+  {{
+    echo
+  }}
+EOE
+
+: header-attribute-replay
+:
+$* <<EOI 2>>/~!EOE!
+alias{x y}:
+% [diag=gen]
+{{
+  echo
+}}
+dump alias{y}
+EOI
+<stdin>:6:1: dump:
+!  .+/alias\{y\}:!
+  % [diag=gen] perform(update)
+  {{
+    echo
+  }}
+EOE
+
+: header-missing-block
+:
+$* <<EOI 2>>EOE != 0
+alias{x}:
+%
+{
+  echo
+}
+EOI
+<stdin>:3:1: error: expected recipe block or 'recipe' instead of '{'
+EOE
+
+: duplicate-action-single
+:
+$* <<EOI 2>>EOE != 0
+alias{x}:
+% update perform(update)
+{{
+  echo
+}}
+EOI
+<stdin>:2:3: error: duplicate perform(update) recipe
+EOE
+
+: duplicate-action-multiple
+:
+$* <<EOI 2>>EOE != 0
+alias{x}:
+{{
+  echo
+}}
+% perform(update)
+{{
+  echo
+}}
+EOI
+<stdin>:5:3: error: duplicate perform(update) recipe
+EOE
+
+: duplicate-action-multipe-decls
+:
+$* <<EOI 2>>EOE != 0
+alias{y}:
+{{
+  echo
+}}
+
+alias{x y}:
+% perform(update)
+{{
+  diag echo
+  echo
+}}
+EOI
+<stdin>:7:3: error: duplicate perform(update) recipe for target alias{y}
+EOE
+
+: if-else
+:
+$* <<EOI 2>>/~%EOE%
+f = false
+alias{x}: alias{z}
+%
+if $f
+{{
+  false
+}}
+else
+{{
+  echo
+}}
+dump alias{x}
+EOI
+<stdin>:12:1: dump:
+%  .+/alias\{x\}: .+/:alias\{z\}%
+  % [diag=echo] perform(update)
+  {{
+    echo
+  }}
+EOE
+
+: if-else-replay
+:
+$* <<EOI 2>>/~%EOE%
+f = false
+alias{x y}: alias{z}
+%
+if $f
+{{
+  false
+}}
+else
+{{
+  echo
+}}
+dump alias{y}
+EOI
+<stdin>:12:1: dump:
+%  .+/alias\{y\}: .+/:alias\{z\}%
+  % [diag=echo] perform(update)
+  {{
+    echo
+  }}
+EOE
+
+: if-no-else
+:
+$* <<EOI 2>>/~%EOE%
+f = false
+alias{x}: alias{z}
+%
+if $f
+{{
+  false
+}}
+dump alias{x}
+EOI
+<stdin>:8:1: dump:
+%  .+/alias\{x\}: .+/:alias\{z\}%
+EOE
+
+: switch
+:
+$* <<EOI 2>>/~%EOE%
+f = 2
+alias{x}: alias{z}
+%
+switch $f
+{
+  case 1
+  {{
+    false
+  }}
+  case 2
+  {{
+    echo
+  }}
+  default
+  {{
+    false
+  }}
+}
+dump alias{x}
+EOI
+<stdin>:19:1: dump:
+%  .+/alias\{x\}: .+/:alias\{z\}%
+  % [diag=echo] perform(update)
+  {{
+    echo
+  }}
+EOE
+
+: switch-replay
+:
+$* <<EOI 2>>/~%EOE%
+f = 2
+alias{x y}: alias{z}
+%
+switch $f
+{
+  case 1
+  {{
+    false
+  }}
+  case 2
+  {{
+    echo
+  }}
+  default
+  {{
+    false
+  }}
+}
+dump alias{y}
+EOI
+<stdin>:19:1: dump:
+%  .+/alias\{y\}: .+/:alias\{z\}%
+  % [diag=echo] perform(update)
+  {{
+    echo
+  }}
+EOE
+
+: switch-no-default
+:
+$* <<EOI 2>>/~%EOE%
+f = 2
+alias{x}: alias{z}
+%
+switch $f
+{
+  case 0
+  {{
+    false
+  }}
+  case 1
+  {{
+    echo
+  }}
+}
+dump alias{x}
+EOI
+<stdin>:15:1: dump:
+%  .+/alias\{x\}: .+/:alias\{z\}%
+EOE
+
+: diag
+:
+{
+  : builtins
+  :
+  {
+    : weight-0
+    :
+    {
+      : single-operation
+      :
+      {
+        $* <<EOI 2>>~%EOE%
+          alias{x}:
+          {{
+
+            exit
+          }}
+          dump alias{x}
+          EOI
+          %.{2}
+            % [diag=update] perform(update)
+          %.{3}
+          EOE
+      }
+
+      : multiple-operations
+      :
+      {
+        $* <<EOI 2>>EOE != 0
+          alias{x}:
+          % update clean
+          {{
+
+            exit
+          }}
+          dump alias{x}
+          EOI
+          <stdin>:4:1: error: unable to deduce low-verbosity script diagnostics name
+            info: consider specifying it explicitly with the 'diag' recipe attribute
+            info: or provide custom low-verbosity diagnostics with the 'diag' builtin
+          EOE
+      }
+    }
+
+    : weight-1
+    :
+    $* <<EOI 2>>~%EOE%
+      alias{x}:
+      {{
+        true
+        rm b
+      }}
+      dump alias{x}
+      EOI
+      %.{2}
+        % [diag=rm] perform(update)
+      %.{4}
+      EOE
+
+    : weight-2
+    :
+    $* <<EOI 2>>~%EOE%
+      alias{x}:
+      {{
+        rm a
+        echo a
+      }}
+      dump alias{x}
+      EOI
+      %.{2}
+        % [diag=echo] perform(update)
+      %.{4}
+      EOE
+
+    : ambiguity
+    :
+    $* <<EOI 2>>EOE != 0
+      alias{x}:
+      {{
+        echo a
+        cat b
+      }}
+      dump alias{x}
+      EOI
+      <stdin>:3:1: error: low-verbosity script diagnostics name is ambiguous
+        <stdin>:3:3: info: could be 'echo'
+        <stdin>:4:3: info: could be 'cat'
+        info: consider specifying it explicitly with the 'diag' recipe attribute
+        info: or provide custom low-verbosity diagnostics with the 'diag' builtin
+      EOE
+  }
+
+  : process-path-ex
+  :
+  {
+    config_cxx = config.cxx=$quote($recall($cxx.path) $cxx.config.mode)
+
+    mkdir build;
+    cat <<EOI >=build/bootstrap.build;
+      project = test
+      amalgamation =
+      subprojects =
+
+      using config
+      EOI
+
+    cat <<EOI >=build/root.build;
+      using cxx
+      EOI
+
+    $* $config_cxx <<EOI 2>>~%EOE%
+      c = [cmdline] $cxx.path --version
+      alias{x}:
+      {{
+        $c
+      }}
+      dump alias{x}
+      EOI
+      %.{2}
+        % [diag=c++] perform(update)
+      %.{3}
+      EOE
+  }
+
+  : unrecognized
+  :
+  {
+    : expansion-failure
+    :
+    $* <<EOI 2>>EOE != 0
+      alias{x}:
+      {{
+         x = true
+         ech($x ? o : a)
+      }}
+      dump alias{x}
+      EOI
+      <stdin>:4:8: error: invalid bool value: null
+        <stdin>:4:11: info: use the '\?' escape sequence if this is a wildcard pattern
+        <stdin>:4:4: info: while deducing low-verbosity script diagnostics name
+        info: consider specifying it explicitly with the 'diag' recipe attribute
+        info: or provide custom low-verbosity diagnostics with the 'diag' builtin
+      EOE
+
+    : empty
+    :
+    $* <<EOI 2>>EOE != 0
+      alias{x}:
+      {{
+        foo = [cmdline] bar
+        $foo
+      }}
+      dump alias{x}
+      EOI
+      <stdin>:4:3: error: unable to deduce low-verbosity script diagnostics name
+        info: consider specifying it explicitly with the 'diag' recipe attribute
+        info: or provide custom low-verbosity diagnostics with the 'diag' builtin
+      EOE
+
+    : process-path-typed
+    :
+    $* <<EOI 2>>~%EOE% != 0
+      alias{x}:
+      {{
+         $build.path --version
+      }}
+      dump alias{x}
+      EOI
+      %<stdin>:3:4: error: unable to deduce low-verbosity script diagnostics name from process path .+%
+        info: consider specifying it explicitly with the 'diag' recipe attribute
+        info: or provide custom low-verbosity diagnostics with the 'diag' builtin
+      EOE
+
+    : process-path-syntactic
+    :
+    $* <<EOI 2>>~%EOE% != 0
+      b = $build.path
+      alias{x}:
+      {{
+         $b --version
+      }}
+      dump alias{x}
+      EOI
+      %<stdin>:4:4: error: unable to deduce low-verbosity script diagnostics name from process path .+%
+        info: consider specifying it explicitly with the 'diag' recipe attribute
+        info: or provide custom low-verbosity diagnostics with the 'diag' builtin
+      EOE
+
+    : target-no-name
+    :
+    : Disable when cross-testing for the sake of simplicity.
+    :
+    #\
+    # @@ There is now metadata and name in exe{b}.
+    if ($test.target == $build.host)
+    {
+      $* <<EOI 2>>/~%EOE% != 0
+        import! b = build2%exe{b}
+
+        alias{x}: $b
+        {{
+          $b --version
+        }}
+        dump alias{x}
+        EOI
+        %<stdin>:5:3: error: unable to deduce low-verbosity script diagnostics name from target .+/exe\{b\}%
+          info: consider specifying it explicitly with the 'diag' recipe attribute
+          info: or provide custom low-verbosity diagnostics with the 'diag' builtin
+        EOE
+    }
+    #\
+
+    : program
+    :
+    $* <<EOI 2>>~%EOE% != 0
+      alias{x}:
+      {{
+        echo a
+        foo
+      }}
+      dump alias{x}
+      EOI
+      <stdin>:4:3: error: unable to deduce low-verbosity script diagnostics name for program foo
+        info: consider specifying it explicitly with the 'diag' recipe attribute
+        info: or provide custom low-verbosity diagnostics with the 'diag' builtin
+      EOE
+  }
+
+  : manual
+  :
+  {
+    : attribute
+    :
+    $* <<EOI 2>>~%EOE%
+      alias{x}:
+        % [diag=foo]
+      {{
+        rm a
+        echo b | set c
+        bar
+      }}
+      dump alias{x}
+      EOI
+      %.{2}
+        % [diag=foo] perform(update)
+      %.{5}
+      EOE
+
+    : diag
+    :
+    $* <<EOI 2>>~%EOE%
+      v = a b
+      alias{x}:
+      {{
+        rm a
+        echo b | set c
+        diag bar
+        fo$v
+      }}
+      dump alias{x}
+      EOI
+      %.
+      %  .+alias\{x\}:%
+        % perform(update)
+        {{
+          rm a
+          echo b | set c
+          diag bar
+          fo$v
+        }}
+      EOE
+  }
+}

@@ -1,0 +1,9 @@
+# file      : build/export.build
+# license   : MIT; see accompanying LICENSE file
+
+$out_root/
+{
+  include bpkg/
+}
+
+export $out_root/bpkg/exe{bpkg}

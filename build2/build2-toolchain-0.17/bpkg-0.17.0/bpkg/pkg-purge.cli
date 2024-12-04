@@ -1,0 +1,69 @@
+// file      : bpkg/pkg-purge.cli
+// license   : MIT; see accompanying LICENSE file
+
+include <bpkg/configuration.cli>;
+
+"\section=1"
+"\name=bpkg-pkg-purge"
+"\summary=purge package"
+
+namespace bpkg
+{
+  {
+    "<options> <pkg>",
+
+    "\h|SYNOPSIS|
+
+     \c{\b{bpkg pkg-purge} [<options>] <pkg>}
+
+     \h|DESCRIPTION|
+
+     The \cb{pkg-purge} command removes the package directory and archive from
+     the filesystem and removes the package from the configuration.  Only
+     packages in the \cb{fetched} and \cb{unpacked} state
+     (\l{bpkg-pkg-status(1)}) can be purged plus \cb{broken} packages if the
+     \cb{--force|-f} option is specified (see the option's description for
+     details on purging broken packages). If the \cb{--keep|-k} option is
+     specified, then the package archive is not removed (see the option's
+     description for details on this mode)."
+  }
+
+  class pkg_purge_options: configuration_options
+  {
+    "\h|PKG-PURGE OPTIONS|"
+
+    bool --keep|-k
+    {
+      "Keep the package archive. Note that in this mode the package is still
+       retained in the configuration's database in the \cb{fetched} state."
+    }
+
+    bool --force|-f
+    {
+      "Purge a broken package. In this mode \cb{bpkg} will verify that the
+       package directory and archive no longer exist and then remove the
+       package from the configuration."
+    }
+  };
+
+  "
+   \h|DEFAULT OPTIONS FILES|
+
+   See \l{bpkg-default-options-files(1)} for an overview of the default
+   options files. For the \cb{pkg-purge} command the search start
+   directory is the configuration directory. The following options files are
+   searched for in each directory and, if found, loaded in the order listed:
+
+   \
+   bpkg.options
+   bpkg-pkg-purge.options
+   \
+
+   The following \cb{pkg-purge} command options cannot be specified in the
+   default options files:
+
+   \
+   --directory|-d
+   \
+  "
+}

@@ -1,0 +1,40 @@
+<changelog xmlns="http://www.codesynthesis.com/xmlns/odb/changelog" database="sqlite" version="1">
+  <model version="2">
+    <table name="configuration" kind="object">
+      <column name="id" type="INTEGER" null="true"/>
+      <column name="name" type="TEXT" null="true"/>
+      <column name="type" type="TEXT" null="true"/>
+      <column name="path" type="TEXT" null="true"/>
+      <column name="relative_path" type="TEXT" null="true"/>
+      <column name="default" type="INTEGER" null="true"/>
+      <column name="forward" type="INTEGER" null="true"/>
+      <column name="auto_sync" type="INTEGER" null="true"/>
+      <primary-key auto="true">
+        <column name="id"/>
+      </primary-key>
+      <index name="configuration_name_i" type="UNIQUE">
+        <column name="name"/>
+      </index>
+      <index name="configuration_path_i" type="UNIQUE">
+        <column name="path"/>
+      </index>
+    </table>
+    <table name="configuration_packages" kind="container">
+      <column name="object_id" type="INTEGER" null="true"/>
+      <column name="index" type="INTEGER" null="true"/>
+      <column name="name" type="TEXT" null="true" options="COLLATE NOCASE"/>
+      <foreign-key name="object_id_fk" on-delete="CASCADE">
+        <column name="object_id"/>
+        <references table="configuration">
+          <column name="id"/>
+        </references>
+      </foreign-key>
+      <index name="configuration_packages_object_id_i">
+        <column name="object_id"/>
+      </index>
+      <index name="configuration_packages_index_i">
+        <column name="index"/>
+      </index>
+    </table>
+  </model>
+</changelog>

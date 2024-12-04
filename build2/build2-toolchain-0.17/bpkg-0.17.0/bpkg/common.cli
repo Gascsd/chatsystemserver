@@ -1,0 +1,540 @@
+// file      : bpkg/common.cli
+// license   : MIT; see accompanying LICENSE file
+
+include <set>;
+
+include <bpkg/types.hxx>;
+include <bpkg/options-types.hxx>;
+
+"\section=1"
+"\name=bpkg-common-options"
+"\summary=details on common options"
+
+namespace bpkg
+{
+  {
+    "<common-options>",
+
+    "\h|SYNOPSIS|
+
+     \c{\b{bpkg} [<common-options>] ...}
+
+     \h|DESCRIPTION|
+
+     The common options control behavior that is common to all or most of the
+     \cb{bpkg} commands. They can be specified either before the command or
+     after, together with the command-specific options."
+  }
+
+  class common_options = 0
+  {
+    "\h|COMMON OPTIONS|"
+
+    // Retain this note only in the summary.
+    //
+    {
+      "",
+      "The common options are summarized below with a more detailed description
+       available in \l{bpkg-common-options(1)}.",
+      ""
+    }
+
+    bool -v
+    {
+      "Print essential underlying commands being executed. This is equivalent
+       to \cb{--verbose 2}."
+    }
+
+    bool -V
+    {
+      "Print all underlying commands being executed. This is equivalent to
+       \cb{--verbose 3}."
+    }
+
+    bool --quiet|-q
+    {
+      "Run quietly, only printing error messages. This is equivalent
+       to \cb{--verbose 0}."
+    }
+
+    uint16_t --verbose = 1
+    {
+      "<level>",
+      "Set the diagnostics verbosity to <level> between 0 and 6. Level 0
+       disables any non-error messages while level 6 produces lots of
+       information, with level 1 being the default. The following additional
+       types of diagnostics are produced at each level:
+
+       \ol|
+
+       \li|High-level information messages.|
+
+       \li|Essential underlying commands being executed.|
+
+       \li|All underlying commands being executed.|
+
+       \li|Information that could be helpful to the user.|
+
+       \li|Information that could be helpful to the developer.|
+
+       \li|Even more detailed information.||"
+    }
+
+    bpkg::stdout_format --stdout-format = bpkg::stdout_format::lines
+    {
+      "<format>",
+      "Representation format to use for printing to \cb{stdout}. Valid values
+       for this option are \cb{lines} (default) and \cb{json}. See the JSON
+       OUTPUT section below for details on the \cb{json} format."
+    }
+
+    size_t --jobs|-j
+    {
+      "<num>",
+      "Number of jobs to perform in parallel. If this option is not
+       specified or specified with the \c{0} value, then the number of
+       available hardware threads is used. This option is also propagated
+       when performing build system operations such as \cb{update},
+       \cb{test}, etc."
+    }
+
+    bool --no-result
+    {
+      "Don't print informational messages about the outcome of performing
+       a command or some of its parts. Note that if this option is specified,
+       then for certain long-running command parts progress is displayed
+       instead, unless suppressed with \cb{--no-progress}."
+    }
+
+    string --structured-result
+    {
+      "<fmt>",
+      "Write the result of performing a command in a structured form. In
+       this mode, instead of printing to \cb{stderr} informational messages
+       about the outcome of performing a command or some of its parts,
+       \cb{bpkg} writes to \cb{stdout} a machine-readable result description
+       in the specified format. Not all commands support producing structured
+       result and valid <fmt> values are command-specific. Consult the command
+       documentation for details."
+    }
+
+    // When it comes to external programs (such as curl, git, etc), if stderr
+    // is not a terminal, the logic is actually tri-state: With --no-progress
+    // we suppress any progress. With --progress we request full progress.
+    // Finally, without any --*progress options we let the external program
+    // decide what to do: it may do something intelligent (like curl) and
+    // produce non-terminal-friendly progress (such as status lines printed
+    // periodically) or it may disable progress all together (like git). Of
+    // course, it may also do no detection and dump non-terminal-unfriendly
+    // progress in which case we should probably do the detection ourselves
+    // and suppress it.
+    //
+    bool --progress
+    {
+      "Display progress indicators for long-lasting operations, such as
+       network transfers, building, etc. If printing to a terminal the
+       progress is displayed by default for low verbosity levels. Use
+       \cb{--no-progress} to suppress."
+    }
+
+    bool --no-progress
+    {
+      "Suppress progress indicators for long-lasting operations, such as
+       network transfers, building, etc."
+    }
+
+    bool --diag-color
+    {
+      "Use color in diagnostics. If printing to a terminal the color is used
+       by default provided the terminal is not dumb. Use \cb{--no-diag-color}
+       to suppress."
+    }
+
+    bool --no-diag-color
+    {
+      "Don't use color in diagnostics."
+    }
+
+    path --build
+    {
+      "<path>",
+      "The build program to be used to build packages. This should be the path
+       to the build2 \cb{b} executable. You can also specify additional options
+       that should be passed to the build program with \cb{--build-option}.
+
+       If the build program is not explicitly specified, then \cb{bpkg} will
+       by default use \cb{b} plus an executable suffix if one was specified
+       when building \cb{bpkg}. So, for example, if \cb{bpkg} name was set
+       to \cb{bpkg-1.0}, then it will look for \cb{b-1.0}."
+    }
+
+    strings --build-option
+    {
+      "<opt>",
+      "Additional option to be passed to the build program. See \cb{--build}
+       for more information on the build program. Repeat this option to specify
+       multiple build options."
+    }
+
+    path --fetch
+    {
+      "<path>",
+      "The fetch program to be used to download resources. Currently,
+       \cb{bpkg} recognizes \cb{curl}, \cb{wget}, and \cb{fetch}. Note that
+       the last component of <path> must contain one of these names as a
+       substring in order for \cb{bpkg} to recognize which program is being
+       used. You can also specify additional options that should be passed
+       to the fetch program with \cb{--fetch-option}.
+
+       If the fetch program is not specified, then \cb{bpkg} will try to
+       discover if one of the above programs is available and use that.
+       Currently, \cb{bpkg} has the following preference order: \cb{curl},
+       \cb{wget}, and \cb{fetch}."
+    }
+
+    strings --fetch-option
+    {
+      "<opt>",
+      "Additional option to be passed to the fetch program. See \cb{--fetch}
+       for more information on the fetch program. Repeat this option to
+       specify multiple fetch options."
+    }
+
+    // Undocumented equivalents to bdep's --curl* options. We "merge" them
+    // into --fetch/--fetch-option in an ad hoc manner (see fetch.cxx for
+    // details).
+    //
+    path --curl;
+    strings --curl-option;
+
+    size_t --fetch-timeout
+    {
+      "<sec>",
+      "The fetch and fetch-like (for example, \cb{git}) program timeout.
+       While the exact semantics of the value depends on the program used,
+       at a minimum it specifies in seconds the maximum time that can be
+       spent without any network activity.
+
+       Specifically, it is translated to the \cb{--max-time} option for
+       \cb{curl} and to the \cb{--timeout} option for \cb{wget} and
+       \cb{fetch}. For \cb{git} over HTTP/HTTPS this semantics is achieved
+       using the \cb{http.lowSpeedLimit}=\i{1} \cb{http.lowSpeedTime}=\i{sec}
+       configuration values (the \cb{git://} and \cb{ssh://} protocols
+       currently do not support timeouts).
+
+       See \cb{--fetch} and \cb{--git} for more information on the fetch
+       programs."
+    }
+
+    butl::url --pkg-proxy
+    {
+      "<url>",
+      "HTTP proxy server to use when fetching package manifests and archives
+       from remote \cb{pkg} repositories. If specified, the proxy <url> must
+       be in the \c{\b{http://}\i{host}[\b{:}\i{port}]} form. If \ci{port} is
+       omitted, 80 is used by default.
+
+       Note that to allow caching, the proxied \cb{https://} URLs are
+       converted to \cb{http://} in order to prevent the fetch program from
+       tunneling (which is the standard approach for proxying HTTPS). If both
+       HTTP and HTTPS repositories are used, it is assumed that the proxy
+       server can figure out which URLs need to be converted back to
+       \cb{https://} based on the request information (for example, host
+       name). For security, this mechanism should only be used with signed
+       repositories or when the proxy is located inside a trusted network."
+    }
+
+    path --git = "git"
+    {
+      "<path>",
+      "The git program to be used to fetch git repositories. You can also
+       specify additional options that should be passed to the git program
+       with \cb{--git-option}.
+
+       If the git program is not explicitly specified, then \cb{bpkg} will use
+       \cb{git} by default."
+    }
+
+    strings --git-option
+    {
+      "<opt>",
+      "Additional common option to be passed to the git program. Note that
+       the common options are the ones that precede the \cb{git} command.
+       See \cb{--git} for more information on the git program. Repeat this
+       option to specify multiple git options."
+    }
+
+    path --sha256
+    {
+      "<path>",
+      "The sha256 program to be used to calculate SHA256 sums. Currently,
+       \cb{bpkg} recognizes \cb{sha256}, \cb{sha256sum}, and \cb{shasum}.
+       Note that the last component of <path> must contain one of these names
+       as a substring in order for \cb{bpkg} to recognize which program is
+       being used. You can also specify additional options that should be
+       passed to the sha256 program with \cb{--sha256-option}.
+
+       If the sha256 program is not specified, then \cb{bpkg} will try to
+       discover if one of the above programs is available and use that.
+       Currently, \cb{bpkg} has the following preference order: \cb{sha256},
+       \cb{sha256sum}, and \cb{shasum}."
+    }
+
+    strings --sha256-option
+    {
+      "<opt>",
+      "Additional option to be passed to the sha256 program. See \cb{--sha256}
+       for more information on the sha256 program. Repeat this option to
+       specify multiple sha256 options."
+    }
+
+    path --tar
+    {
+      "<path>",
+      "The tar program to be used to extract package archives. For example,
+       \cb{gtar} or \cb{bsdtar}. You can also specify additional options that
+       should be passed to the tar program with \cb{--tar-option}. If the tar
+       program is not explicitly specified, then \cb{bpkg} will use \cb{tar}
+       by default."
+    }
+
+    strings --tar-option
+    {
+      "<opt>",
+      "Additional option to be passed to the tar program. See \cb{--tar} for
+       more information on the tar program. Repeat this option to specify
+       multiple tar options."
+    }
+
+    // NOTE: when adding support for a new openssl command, don't forget to
+    // update the openssl_commands qualifier list.
+    //
+    qualified_option<openssl_commands, path> --openssl = "openssl"
+    {
+      "<path>",
+      "The openssl program to be used for crypto operations. You can also
+       specify additional options that should be passed to the openssl
+       program with \cb{--openssl-option}. If the openssl program is not
+       explicitly specified, then \cb{bpkg} will use \cb{openssl} by default.
+
+       The \cb{--openssl*} values can be optionally qualified with the openssl
+       command in the \c{\i{command}\b{:}\i{value}} form. This makes the value
+       only applicable to the specific command, for example:
+
+       \
+       bpkg rep-create                      \
+         --openssl pkeyutl:/path/to/openssl \
+         --openssl-option pkeyutl:-engine   \
+         --openssl-option pkeyutl:pkcs11    \
+         ...
+       \
+
+       Note that for \cb{openssl} versions prior to \cb{3.0.0} \cb{bpkg} uses
+       the \cb{rsautl} command instead of \cb{pkeyutl} for the data signing
+       and recovery operations.
+
+       An unqualified value that contains a colon can be specified as
+       qualified with an empty command, for example, \cb{--openssl
+       :C:\\bin\\openssl}. To see openssl commands executed by \cb{bpkg}, use
+       the verbose mode (\cb{-v} option)."
+    }
+
+    qualified_option<openssl_commands, strings> --openssl-option
+    {
+      "<opt>",
+      "Additional option to be passed to the openssl program. See
+       \cb{--openssl} for more information on the openssl program.
+       The values can be optionally qualified with the openssl command,
+       as discussed in \cb{--openssl}. Repeat this option to specify
+       multiple openssl options."
+    }
+
+    bpkg::auth --auth = bpkg::auth::remote
+    {
+      "<type>",
+      "Types of repositories to authenticate. Valid values for this option are
+       \cb{none}, \cb{remote}, \cb{all}. By default only remote repositories
+       are authenticated. You can request authentication of local repositories
+       by passing \cb{all} or disable authentication completely by passing
+       \cb{none}."
+    }
+
+    std::set<string, icase_compare_string> --trust
+    {
+      "<fingerprint>",
+      "Trust repository certificate with a SHA256 <fingerprint>. Such a
+       certificate is trusted automatically, without prompting the user for
+       a confirmation. Repeat this option to trust multiple certificates.
+
+       Note that by default \cb{openssl} prints a SHA1 fingerprint and to
+       obtain a SHA256 one you will need to pass the \cb{-sha256} option,
+       for example:
+
+       \
+       openssl x509 -sha256 -fingerprint -noout -in cert.pem
+       \
+      "
+    }
+
+    // Note that if a command for which one can specify these options also
+    // have --yes/--no (for all prompts), then those values should be
+    // propagated to these ones.
+    //
+    bool --trust-yes
+    {
+      "Assume the answer to all authentication prompts is \cb{yes}."
+    }
+
+    bool --trust-no
+    {
+      "Assume the answer to all authentication prompts is \cb{no}."
+    }
+
+    git_capabilities_map --git-capabilities
+    {
+      "<up>=<pc>",
+      "Protocol capabilities (<pc>) for a \cb{git} repository URL prefix
+       (<up>). Valid values for the capabilities are \cb{dumb} (no shallow
+       clone support), \cb{smart} (support for shallow clone, but not for
+       fetching unadvertised commits), \cb{unadv} (support for shallow clone
+       and for fetching unadvertised commits). For example:
+
+       \
+       bpkg build https://example.org/foo.git#master \
+         --git-capabilities https://example.org=smart
+       \
+
+       See \l{bpkg-repository-types(1)} for details on the \cb{git} protocol
+       capabilities."
+    }
+
+    string --pager // String to allow empty value.
+    {
+      "<path>",
+      "The pager program to be used to show long text. Commonly used pager
+       programs are \cb{less} and \cb{more}. You can also specify additional
+       options that should be passed to the pager program with
+       \cb{--pager-option}. If an empty string is specified as the pager
+       program, then no pager will be used. If the pager program is not
+       explicitly specified, then \cb{bpkg} will try to use \cb{less}. If it
+       is not available, then no pager will be used."
+    }
+
+    strings --pager-option
+    {
+      "<opt>",
+      "Additional option to be passed to the pager program. See \cb{--pager}
+       for more information on the pager program. Repeat this option to
+       specify multiple pager options."
+    }
+
+    // The following option is "fake" in that it is actually handled by
+    // argv_file_scanner. We have it here for documentation.
+    //
+    string --options-file
+    {
+      "<file>",
+      "Read additional options from <file>. Each option should appear on a
+       separate line optionally followed by space or equal sign (\cb{=}) and
+       an option value. Empty lines and lines starting with \cb{#} are
+       ignored. Option values can be enclosed in double (\cb{\"}) or single
+       (\cb{'}) quotes to preserve leading and trailing whitespaces as well as
+       to specify empty values. If the value itself contains trailing or
+       leading quotes, enclose it with an extra pair of quotes, for example
+       \cb{'\"x\"'}. Non-leading and non-trailing quotes are interpreted as
+       being part of the option value.
+
+       The semantics of providing options in a file is equivalent to providing
+       the same set of options in the same order on the command line at the
+       point where the \cb{--options-file} option is specified except that
+       the shell escaping and quoting is not required. Repeat this option
+       to specify more than one options file."
+    }
+
+    dir_path --default-options
+    {
+      "<dir>",
+      "The directory to load additional default options files from."
+    }
+
+    bool --no-default-options
+    {
+      "Don't load default options files."
+    }
+
+    bool --keep-tmp
+    {
+      "Don't remove the \cb{bpkg}'s temporary directory at the end of the
+       command execution and print its path at the verbosity level 2 or
+       higher. This option is primarily useful for troubleshooting."
+    }
+  };
+
+  {
+    "",
+    "
+    \h|JSON OUTPUT|
+
+    Commands that support the JSON output specify their formats as a
+    serialized representation of a C++ \cb{struct} or an array thereof. For
+    example:
+
+    \
+    struct package
+    {
+      string name;
+    };
+
+    struct configuration
+    {
+      uint64_t         id;
+      string           path;
+      optional<string> name;
+      bool             default;
+      vector<package>  packages;
+    };
+    \
+
+    An example of the serialized JSON representation of \cb{struct}
+    \cb{configuration}:
+
+    \
+    {
+      \"id\": 1,
+      \"path\": \"/tmp/hello-gcc\",
+      \"name\": \"gcc\",
+      \"default\": true,
+      \"packages\": [
+        {
+          \"name\": \"hello\"
+        }
+      ]
+    }
+    \
+
+    This sections provides details on the overall properties of such formats
+    and the semantics of the \cb{struct} serialization.
+
+    The order of members in a JSON object is fixed as specified in the
+    corresponding \cb{struct}. While new members may be added in the
+    future (and should be ignored by older consumers), the semantics of the
+    existing members (including whether the top-level entry is an object or
+    array) may not change.
+
+    An object member is required unless its type is \cb{optional<>},
+    \cb{bool}, or \cb{vector<>} (array). For \cb{bool} members absent means
+    \cb{false}. For \cb{vector<>} members absent means empty. An empty
+    top-level array is always present.
+
+    For example, the following JSON text is a possible serialization of
+    the above \cb{struct} \cb{configuration}:
+
+    \
+    {
+      \"id\": 1,
+      \"path\": \"/tmp/hello-gcc\"
+    }
+    \
+    "
+  }
+}
