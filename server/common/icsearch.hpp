@@ -45,7 +45,7 @@ private:
     std::shared_ptr<elasticlient::Client> _client;
 
 public:
-    ESIndex(std::shared_ptr<elasticlient::Client> &client, const std::string &name, const std::string &type)
+    ESIndex(std::shared_ptr<elasticlient::Client> &client, const std::string &name, const std::string &type = "_doc")
         : _name(name), _type(type), _client(client)
     {
         Json::Value analysis;
@@ -69,7 +69,7 @@ public:
         _properties[key] = fields;
         return *this;
     }
-    bool create()
+    bool create(const std::string &index_id = "default_index_id")
     {
         Json::Value mappings;
         mappings["dynamic"] = true;
@@ -86,7 +86,7 @@ public:
         // 2. 发起搜索请求
         try
         {
-            auto rsp = _client->index(_name, _type, "", body);
+            auto rsp = _client->index(_name, _type, index_id, body);
             if (rsp.status_code < 200 || rsp.status_code >= 300)
             {
                 LOG_ERROR("创建ES索引 {} 失败,响应状态码异常: {}", _name, rsp.status_code);
@@ -112,12 +112,12 @@ private:
     std::shared_ptr<elasticlient::Client> _client;
 
 public:
-    ESInsert(std::shared_ptr<elasticlient::Client> &client, const std::string &name, const std::string &type)
+    ESInsert(std::shared_ptr<elasticlient::Client> &client, const std::string &name, const std::string &type = "_doc")
         : _name(name), _type(type), _client(client)
     {}
     ESInsert &append(const std::string &key, const std::string& val)
     {
-        _item[key] = key;
+        _item[key] = val;
         return *this;
     }
     bool insert(const std::string& id)
@@ -155,7 +155,7 @@ private:
     std::string _type;
     std::shared_ptr<elasticlient::Client> _client;
 public:
-    ESRemove(std::shared_ptr<elasticlient::Client> &client, const std::string &name, const std::string &type)
+    ESRemove(std::shared_ptr<elasticlient::Client> &client, const std::string &name, const std::string &type = "_doc")
         : _name(name), _type(type), _client(client)
     {}
     bool remove(const std::string &id)
@@ -188,7 +188,7 @@ private:
     Json::Value _should;
     std::shared_ptr<elasticlient::Client> _client;
 public:
-    ESSearch(std::shared_ptr<elasticlient::Client> &client, const std::string &name, const std::string &type)
+    ESSearch(std::shared_ptr<elasticlient::Client> &client, const std::string &name, const std::string &type = "_doc")
         : _name(name), _type(type), _client(client)
     {}
     ESSearch& append_must_not_terms(const std::string& key, const std::vector<std::string>& vals)
@@ -196,11 +196,11 @@ public:
         Json::Value fields;
         for(const auto& val : vals)
         {
-            fields["key"].append(val);
+            fields[key].append(val);
         }
         Json::Value terms;
         terms["terms"] = fields;
-        _must_not["_must_not"].append(terms);
+        _must_not.append(terms);
         return *this;
     }
     ESSearch& append_should_match(const std::string& key, const std::string& val)
@@ -219,18 +219,23 @@ public:
         if(_should.empty() == false) cond["should"] = _should;
         Json::Value query;
         query["bool"] = cond;
+
+        Json::Value root;
+        root["query"] = query;
+
         std::string body;
-        bool ret = Serialize(query, body);
+        bool ret = Serialize(root, body);
         if (ret == false)
         {
             LOG_ERROR("索引序列化失败");
             return Json::Value();
         }
+        // LOG_INFO("检索正文 : {}", body);
         // 2. 发起搜索请求
         cpr::Response rsp;
         try
         {
-            rsp = _client->search(_name, _type, id, body);
+            rsp = _client->search(_name, _type, body);
             if (rsp.status_code < 200 || rsp.status_code >= 300)
             {
                 LOG_ERROR("检索数据 {} 失败,响应状态码异常: {}", body, rsp.status_code);
@@ -242,6 +247,15 @@ public:
             LOG_ERROR("检索数据 {} 失败: {}", body, e.what());
             return Json::Value();
         }
-        return rsp["hits"]["hits"];
+        // LOG_INFO("检索响应正文 : {}", rsp.text);
+        // 3. 对响应征文进行反序列化
+        Json::Value json_res;
+        ret = UnSerialize(rsp.text, json_res);
+        if(ret == false)
+        {
+            LOG_ERROR("检索数据 {} 反序列化失败", rsp.text);
+            return Json::Value();
+        }
+        return json_res["hits"]["hits"];
     }
 };
