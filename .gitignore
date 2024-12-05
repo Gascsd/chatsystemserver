@@ -3,3 +3,9 @@
 
 # 忽略.DS_Store文件
 .DS_Store
+
+# 忽略临时文件
+*~
+
+# 忽略 VSCode 工作区设置
+.vscode/
