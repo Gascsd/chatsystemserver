@@ -1,7 +1,0 @@
-# file      : tests/cc/libu/buildfile
-# license   : MIT; see accompanying LICENSE file
-
-# Test utility library support.
-#
-
-./: testscript $b

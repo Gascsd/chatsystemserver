@@ -1,4 +1,0 @@
-# file      : tests/if-else/buildfile
-# license   : MIT; see accompanying LICENSE file
-
-./: testscript $b

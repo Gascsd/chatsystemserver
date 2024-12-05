@@ -1,6 +1,0 @@
-# file      : tests/strcase/buildfile
-# license   : MIT; see accompanying LICENSE file
-
-import libs = libbutl%lib{butl}
-
-exe{driver}: {hxx cxx}{*} $libs

@@ -1,9 +1,0 @@
-# file      : tests/test/script/runner/buildfile
-# license   : MIT; see accompanying LICENSE file
-
-./: testscript{*} exe{driver} $b
-
-testscript{*}: target = exe{driver}
-
-import libs = libbutl%lib{butl}
-exe{driver}: {hxx cxx}{*} $libs

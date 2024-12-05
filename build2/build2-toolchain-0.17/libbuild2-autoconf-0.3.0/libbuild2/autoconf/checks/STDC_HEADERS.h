@@ -1,5 +1,0 @@
-// STDC_HEADERS
-
-#undef STDC_HEADERS
-
-#define STDC_HEADERS 1

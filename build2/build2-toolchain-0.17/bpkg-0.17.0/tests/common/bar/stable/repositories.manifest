@@ -1,6 +1,0 @@
-# bar/stable
-#
-: 1
-location: ../../foo/stable
-role: prerequisite
-:

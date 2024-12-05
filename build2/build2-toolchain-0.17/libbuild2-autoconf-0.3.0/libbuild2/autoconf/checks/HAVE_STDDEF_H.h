@@ -1,5 +1,0 @@
-// HAVE_STDDEF_H
-
-#undef HAVE_STDDEF_H
-
-#define HAVE_STDDEF_H 1

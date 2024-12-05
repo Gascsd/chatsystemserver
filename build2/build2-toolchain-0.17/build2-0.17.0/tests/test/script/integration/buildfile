@@ -1,7 +1,0 @@
-# file      : tests/test/script/integration/buildfile
-# license   : MIT; see accompanying LICENSE file
-
-# Test integration of testscript into build system.
-#
-
-./: testscript $b

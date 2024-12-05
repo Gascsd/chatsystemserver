@@ -90,5 +90,6 @@
         "valarray": "cpp",
         "variant": "cpp"
     },
-    "cmake.sourceDirectory": "/home/ubuntu/workspace/chatsystem_server/es/elasticlient"
+    // "cmake.sourceDirectory": "/home/ubuntu/workspace/chatsystem_server/es/elasticlient",
+    "C_Cpp.default.compilerPath": "/usr/bin/g++"
 }

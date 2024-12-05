@@ -1,5 +1,0 @@
-// HAVE_STDLIB_H
-
-#undef HAVE_STDLIB_H
-
-#define HAVE_STDLIB_H 1

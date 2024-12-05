@@ -1,4 +1,0 @@
-# file      : tests/function/process/buildfile
-# license   : MIT; see accompanying LICENSE file
-
-./: testscript $b

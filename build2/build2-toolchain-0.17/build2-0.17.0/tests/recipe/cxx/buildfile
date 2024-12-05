@@ -1,4 +1,0 @@
-# file      : tests/recipe/cxx/buildfile
-# license   : MIT; see accompanying LICENSE file
-
-./: testscript $b

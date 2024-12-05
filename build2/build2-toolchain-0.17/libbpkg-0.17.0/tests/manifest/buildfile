@@ -1,7 +1,0 @@
-# file      : tests/manifest/buildfile
-# license   : MIT; see accompanying LICENSE file
-
-import libs  = libbutl%lib{butl}
-import libs += libbpkg%lib{bpkg}
-
-exe{driver}: {hxx cxx}{*} $libs testscript

@@ -1,7 +1,0 @@
-# file      : tests/cc/modules/buildfile
-# license   : MIT; see accompanying LICENSE file
-
-# Test C++ modules support.
-#
-
-./: testscript{* -common} file{common.testscript} $b

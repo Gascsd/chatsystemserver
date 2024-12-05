@@ -1,4 +1,0 @@
-# file      : tests/name/buildfile
-# license   : MIT; see accompanying LICENSE file
-
-./: testscript{*} $b
