@@ -1,5 +1,0 @@
-[basic_logger][13:26:07][1995833][debug   ] This is a debug message
-[basic_logger][13:26:07][1995833][info    ] This is a info message
-[basic_logger][13:26:07][1995833][warning ] This is a warn message
-[basic_logger][13:26:07][1995833][error   ] This is a error message
-[basic_logger][13:26:07][1995833][critical] This is a critical message
