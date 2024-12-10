@@ -332,7 +332,7 @@ namespace odb
   }
 
   const char access::object_traits_impl< ::Person, id_mysql >::persist_statement[] =
-  "INSERT INTO `Person` "
+  "INSERT INTO `person` "
   "(`id`, "
   "`age`, "
   "`name`, "
@@ -342,15 +342,15 @@ namespace odb
 
   const char access::object_traits_impl< ::Person, id_mysql >::find_statement[] =
   "SELECT "
-  "`Person`.`id`, "
-  "`Person`.`age`, "
-  "`Person`.`name`, "
-  "`Person`.`update` "
-  "FROM `Person` "
-  "WHERE `Person`.`id`=?";
+  "`person`.`id`, "
+  "`person`.`age`, "
+  "`person`.`name`, "
+  "`person`.`update` "
+  "FROM `person` "
+  "WHERE `person`.`id`=?";
 
   const char access::object_traits_impl< ::Person, id_mysql >::update_statement[] =
-  "UPDATE `Person` "
+  "UPDATE `person` "
   "SET "
   "`age`=?, "
   "`name`=?, "
@@ -358,22 +358,22 @@ namespace odb
   "WHERE `id`=?";
 
   const char access::object_traits_impl< ::Person, id_mysql >::erase_statement[] =
-  "DELETE FROM `Person` "
+  "DELETE FROM `person` "
   "WHERE `id`=?";
 
   const char access::object_traits_impl< ::Person, id_mysql >::query_statement[] =
   "SELECT "
-  "`Person`.`id`, "
-  "`Person`.`age`, "
-  "`Person`.`name`, "
-  "`Person`.`update` "
-  "FROM `Person`";
+  "`person`.`id`, "
+  "`person`.`age`, "
+  "`person`.`name`, "
+  "`person`.`update` "
+  "FROM `person`";
 
   const char access::object_traits_impl< ::Person, id_mysql >::erase_query_statement[] =
-  "DELETE FROM `Person`";
+  "DELETE FROM `person`";
 
   const char access::object_traits_impl< ::Person, id_mysql >::table_name[] =
-  "`Person`";
+  "`person`";
 
   void access::object_traits_impl< ::Person, id_mysql >::
   persist (database& db, object_type& obj)

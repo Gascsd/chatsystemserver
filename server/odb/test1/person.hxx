@@ -12,7 +12,7 @@
 
 typedef boost::posix_time::ptime ptime;
 
-#pragma db object
+#pragma db object table("person")
 class Person
 {
 public:
@@ -47,5 +47,5 @@ private:
 // 如果用到了 boost 库中的接口，则需要使用选项 : --profile boost/date-time
 // odb -d mysql --generate-query --generate-schema --profile boost/date-time person.hxx
 
-
+// odb -d mysql --std c++11 --generate-query --generate-schema --profile boost/date-time person.hxx
 
