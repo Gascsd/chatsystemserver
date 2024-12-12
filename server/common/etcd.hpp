@@ -10,7 +10,8 @@
 #include <memory>
 
 #include "../common/logger.hpp"
-
+namespace zht_im
+{
 // 服务器注册客户端类
 class Registrant
 {
@@ -95,3 +96,4 @@ private:
         }
     }
 };
+}
