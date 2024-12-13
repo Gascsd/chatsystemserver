@@ -1,5 +1,5 @@
 syntax = "proto3";
-package bite_im;
+package zht_im;
 option cc_generic_services = true;
 //用户信息结构
 message UserInfo {
@@ -37,9 +37,9 @@ message ImageMessageInfo {
     optional bytes image_content = 2;
 }
 message FileMessageInfo {
-    optional string file_id = 1;//文件 id,客户端发送的时候不用设置
-    int64 file_size = 2;//文件大小
-    string file_name = 3;//文件名称
+    optional string file_id = 1;    //文件 id,客户端发送的时候不用设置
+    optional int64 file_size = 2;            //文件大小
+    optional string file_name = 3;           //文件名称
     //文件数据，在 ES 中存储消息的时候只要 id 和元信息，不要文件数据, 服务端转发的时候也不需要填充
     optional bytes file_contents = 4;
 }
@@ -67,11 +67,11 @@ message MessageInfo {
     MessageContent message = 5;
 }
 message FileDownloadData {
-    string file_id = 1;
-    bytes file_content = 2;
+    string file_id = 1;     // 文件ID
+    bytes file_content = 2; // 文件内容
 }
 message FileUploadData {
-    string file_name = 1;
-    int64 file_size = 2;
-    bytes file_content = 3;
+    string file_name = 1;       // 文件名称
+    int64 file_size = 2;        // 文件大小
+    bytes file_content = 3;     // 文件内容
 }

@@ -1,5 +1,5 @@
 syntax = "proto3";
-package bite_im;
+package zht_im;
 import "base.proto";
 option cc_generic_services = true;
 message GetSingleFileReq {
@@ -12,7 +12,7 @@ message GetSingleFileRsp {
     string request_id = 1;
     bool success = 2;
     string errmsg = 3;
-    FileDownloadData file_data = 4;
+    optional FileDownloadData file_data = 4;
 }
 message GetMultiFileReq {
     string request_id = 1;
@@ -24,10 +24,10 @@ message GetMultiFileRsp {
     string request_id = 1;
     bool success = 2;
     string errmsg = 3;
-    map<string, FileDownloadData> file_data = 4;
+    map<string, FileDownloadData> file_data = 4; // 文件ID与文件数据的映射
 }
 message PutSingleFileReq {
-    string request_id = 1;
+    string request_id = 1;              // 请求ID，作为处理流程的唯一标识
     optional string user_id = 2;
     optional string session_id = 3;
     FileUploadData file_data = 4;
@@ -36,7 +36,7 @@ message PutSingleFileRsp {
     string request_id = 1;
     bool success = 2;
     string errmsg = 3;
-    FileMessageInfo file_info = 4;
+    FileMessageInfo file_info = 4;  // 返回了文件组织的元信息
 }
 message PutMultiFileReq {
     string request_id = 1;

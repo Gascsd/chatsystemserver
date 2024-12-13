@@ -13,7 +13,7 @@ set(odb_srcs "")
 foreach(odb_file ${odb_files})
 # 3.3 如果没有生成，则预定义生成指令 -- 用于在构建项目之前先生成框架代码
     string(REPLACE ".hxx" "-odb.hxx" odb_hxx ${odb_file})
-    string(REPLACE ".cxx" "-odb.cxx" odb_cxx ${odb_file})
+    string(REPLACE ".hxx" "-odb.cxx" odb_cxx ${odb_file})
     if (NOT EXISTS ${CMAKE_CURRENT_BINARY_DIR}/${odb_cxx})
         add_custom_command(
             PRE_BUILD
@@ -25,11 +25,13 @@ foreach(odb_file ${odb_files})
         )
     endif()
 # 3.4 将所有生成的框架代码文件名称保存起来
+    message(STATUS "odb cxx file: " ${odb_cxx})
     list(APPEND odb_srcs ${CMAKE_CURRENT_BINARY_DIR}/${odb_cxx}) # stduent-odb.cxx classes-odb.cxx
 endforeach(odb_file odb_files)
 # 4. 获取源码目录下的所有源码文件
 set(src_files "")
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/source src_files)
+message(STATUS "odb src file: " ${odb_srcs})
 # 5. 声明目标及依赖
 add_executable(main ${src_files} ${odb_srcs})
 # 6. 设置头文件默认搜索路径
