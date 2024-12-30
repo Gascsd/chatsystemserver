@@ -73,6 +73,10 @@ public:
         _watcher = std::make_shared<etcd::Watcher>(*_client.get(), basedir,
         std::bind(&Discovery::callback, this, std::placeholders::_1), true);
     }
+    ~Discovery()
+    {
+        _watcher->Cancel();
+    }
 private:
     void callback(const etcd::Response &resp)
     {

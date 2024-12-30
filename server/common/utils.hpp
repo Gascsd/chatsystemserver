@@ -1,4 +1,4 @@
-
+#pragma once
 // 实现项目中一些公共的工具类接口
 // 1. 生成一个唯一ID的接口
 // 2. 文件的读写操作接口
@@ -35,6 +35,15 @@ namespace zht_im
         short tmp = idx.fetch_add(1);
         ss << std::setw(4) << std::setfill('0') << std::hex << tmp;
         return ss.str();
+    }
+
+    // 生成4位随机验证码
+    std::string vcode()
+    {
+        std::random_device rd;                                   // 设备随机数对象
+        std::mt19937 generator(rd());                            // 以设备随机数位种子，实例化伪随机数对象
+        std::uniform_int_distribution<int> distribution(1000, 9999); // 限定数据范围
+        return std::to_string(distribution(generator));
     }
 
     // 读取到body中

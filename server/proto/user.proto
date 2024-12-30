@@ -8,8 +8,8 @@ message UserRegisterReq {
     string request_id = 1;
     string nickname = 2;
     string password = 3;
-    string verify_code_id = 4;
-    string verify_code = 5;
+    optional string verify_code_id = 4;
+    optional string verify_code = 5;
 }
 message UserRegisterRsp {
     string request_id = 1;
@@ -22,8 +22,8 @@ message UserLoginReq {
     string request_id = 1;
     string nickname = 2;
     string password = 3;
-    string verify_code_id = 4;
-    string verify_code = 5;
+    optional string verify_code_id = 4;
+    optional string verify_code = 5;
 }
 message UserLoginRsp {
     string request_id = 1;
@@ -75,8 +75,8 @@ message PhoneLoginRsp {
 //其他个人/好友信息的获取在好友操作中完成
 message GetUserInfoReq {
     string request_id = 1;
-    optional string user_id = 2;
-    optional string session_id = 3;
+    optional string user_id = 2;    // 网关进行身份鉴权之后填入的字段
+    optional string session_id = 3; // 进行客户端身份识别的关键字段
 }
 message GetUserInfoRsp {
     string request_id = 1;

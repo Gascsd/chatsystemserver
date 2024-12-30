@@ -12,26 +12,27 @@ namespace zht_im
 {
     class DMSClient
     {
+    public:
+        using ptr = std::shared_ptr<DMSClient>;
     private:
         std::string _access_key_id;
         std::string _access_key_secret;
-        std::unique_ptr<AlibabaCloud::CommonClient> _client;
 
     public:
         DMSClient(const std::string &access_key_id, const std::string access_key_secret)
             : _access_key_id(access_key_id), _access_key_secret(access_key_secret)
+        {
+        }
+        ~DMSClient() { AlibabaCloud::ShutdownSdk(); }
+
+        bool Send(const std::string &phone, const std::string code)
         {
             AlibabaCloud::InitializeSdk();
             AlibabaCloud::ClientConfiguration configuration("cn-qingdao");
             configuration.setConnectTimeout(1500);
             configuration.setReadTimeout(4000);
             AlibabaCloud::Credentials credential(_access_key_id, _access_key_secret);
-            _client = std::make_unique<AlibabaCloud::CommonClient>(credential, configuration);
-        }
-        ~DMSClient() { AlibabaCloud::ShutdownSdk(); }
-
-        bool Send(const std::string &phone, const std::string code)
-        {
+            auto _client = std::make_unique<AlibabaCloud::CommonClient>(credential, configuration);
             AlibabaCloud::CommonRequest request(AlibabaCloud::CommonRequest::RequestPattern::RpcPattern);
             request.setHttpMethod(AlibabaCloud::HttpRequest::Method::Post);
             request.setDomain("dysmsapi.aliyuncs.com");
