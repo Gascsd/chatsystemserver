@@ -1,0 +1,17 @@
+[
+{
+  "directory": "/home/zht/chatsystemserver/build",
+  "command": "/usr/bin/c++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_WIDGETS_LIB -I/home/zht/chatsystemserver/build/ChatClient_autogen/include -isystem /usr/include/x86_64-linux-gnu/qt5 -isystem /usr/include/x86_64-linux-gnu/qt5/QtWidgets -isystem /usr/include/x86_64-linux-gnu/qt5/QtGui -isystem /usr/include/x86_64-linux-gnu/qt5/QtCore -isystem /usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++ -g -fPIC -std=gnu++17 -o CMakeFiles/ChatClient.dir/ChatClient_autogen/mocs_compilation.cpp.o -c /home/zht/chatsystemserver/build/ChatClient_autogen/mocs_compilation.cpp",
+  "file": "/home/zht/chatsystemserver/build/ChatClient_autogen/mocs_compilation.cpp"
+},
+{
+  "directory": "/home/zht/chatsystemserver/build",
+  "command": "/usr/bin/c++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_WIDGETS_LIB -I/home/zht/chatsystemserver/build/ChatClient_autogen/include -isystem /usr/include/x86_64-linux-gnu/qt5 -isystem /usr/include/x86_64-linux-gnu/qt5/QtWidgets -isystem /usr/include/x86_64-linux-gnu/qt5/QtGui -isystem /usr/include/x86_64-linux-gnu/qt5/QtCore -isystem /usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++ -g -fPIC -std=gnu++17 -o CMakeFiles/ChatClient.dir/main.cpp.o -c /home/zht/chatsystemserver/client/main.cpp",
+  "file": "/home/zht/chatsystemserver/client/main.cpp"
+},
+{
+  "directory": "/home/zht/chatsystemserver/build",
+  "command": "/usr/bin/c++ -DQT_CORE_LIB -DQT_GUI_LIB -DQT_WIDGETS_LIB -I/home/zht/chatsystemserver/build/ChatClient_autogen/include -isystem /usr/include/x86_64-linux-gnu/qt5 -isystem /usr/include/x86_64-linux-gnu/qt5/QtWidgets -isystem /usr/include/x86_64-linux-gnu/qt5/QtGui -isystem /usr/include/x86_64-linux-gnu/qt5/QtCore -isystem /usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++ -g -fPIC -std=gnu++17 -o CMakeFiles/ChatClient.dir/mainwidget.cpp.o -c /home/zht/chatsystemserver/client/mainwidget.cpp",
+  "file": "/home/zht/chatsystemserver/client/mainwidget.cpp"
+}
+]
