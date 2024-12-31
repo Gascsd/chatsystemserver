@@ -1,4 +1,4 @@
-// 主要实现语音识别子服务的服务器搭建
+// 主要实现用户子服务的服务器搭建
 #include "user_server.hpp"
 
 DEFINE_bool(run_mode, false, "程序运行模式模式,false-调试;true-发布");

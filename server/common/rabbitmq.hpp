@@ -11,6 +11,9 @@ namespace zht_im
 {
     class MQClient
     {
+    public:
+        using MessageCallback = std::function<void(const char *, size_t)>;
+        using ptr = std::shared_ptr<MQClient>;
 #define DEFAULT_ROUTING_KEY "routing_key"
     private:
         struct ev_async _async_watcher;
@@ -27,7 +30,6 @@ namespace zht_im
         }
 
     public:
-        using MessageCallback = std::function<void(const char *, size_t)>;
         MQClient(const std::string &user, const std::string passwd, const std::string host)
         {
             _loop = EV_DEFAULT;
