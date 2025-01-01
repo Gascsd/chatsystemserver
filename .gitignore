@@ -1,6 +1,9 @@
 # 忽略client下的build目录的所有内容
 /client/build/*
 
+# 忽略所有build目录下的内容
+build/*
+
 # 忽略.DS_Store文件
 .DS_Store
 
