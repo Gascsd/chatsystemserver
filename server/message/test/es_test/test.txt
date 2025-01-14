@@ -1,0 +1,84 @@
+// 构建索引
+POST /message/_doc
+{
+    "settings" : 
+    {
+        "analysis" : 
+        {
+            "analyzer" : 
+            {
+                "ik" : 
+                {
+                    "tokenizer" : "ik_max_word"
+                }
+            }
+        }
+    },
+    "mappings" : {
+        "dynamic" : true,
+        "properties" : 
+        {
+            "chat_session_id" : 
+            {
+                "type" : "keyword",
+                "analyzer" : "standard"
+            },
+            "message_id" : 
+            {
+                "type" : "keyword",
+                "enable" : false
+            },
+            "create_time" :
+            {
+                "type" : "long",
+                "enable" : false
+            },
+            "content" : 
+            {
+                "type" : "text",
+                "analyzer" : "ik_max_word"
+            }
+        }
+    }
+}
+
+// 新增数据
+POST /message/_doc/_bulk
+{"index":{"_id":"1"}}
+{"chat_session_id" : "会话ID1","message_id" : "消息ID1","content" : "吃饭了么？ ", "user_id":"用户ID1", "create_time":12345678910}
+{"index":{"_id":"2"}}
+{"chat_session_id" : "会话ID1","message_id" : "消息ID2","content" : "吃的盖浇饭。 ", "user_id":"用户ID2", "create_time":12345678910}
+{"index":{"_id":"3"}}
+{"chat_session_id" : "会话ID2","message_id" : "消息ID3","content" : "昨天吃饭了么？ ", "user_id":"用户ID2", "create_time":12345678910}
+{"index":{"_id":"4"}}
+{"chat_session_id" : "会话ID2","message_id" : "消息ID4","content" : "昨天吃的盖浇饭。 ", "user_id":"用户ID2", "create_time":12345678910}
+
+// 搜索
+GET /message/_doc/_search?pretty
+{
+    "query": {
+        "match_all": {}
+    }
+}
+
+GET /message/_doc/_search?pretty
+{
+    "query" : 
+    {
+        "bool" : 
+        {
+            "must" : 
+            [
+                {
+                    "term" : { "chat_session_id.keyword" : "会话ID1" }
+                },
+                {
+                    "match" : { "content" : "盖浇饭" }
+                }
+            ]
+        }
+    }
+}
+
+// 删除索引
+DELETE /message

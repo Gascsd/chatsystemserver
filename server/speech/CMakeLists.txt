@@ -43,4 +43,4 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../third/include)
 target_link_libraries(${target} -lgflags -lspdlog -lfmt -lbrpc -lssl -lcrypto -lprotobuf -lleveldb -letcd-cpp-api -lcpprest -lcurl /usr/lib/x86_64-linux-gnu/libjsoncpp.so.19)
 target_link_libraries(${test_target} -lgflags -lspdlog -lfmt -lbrpc -lssl -lcrypto -lprotobuf -lleveldb -letcd-cpp-api -lcpprest -lcurl /usr/lib/x86_64-linux-gnu/libjsoncpp.so.19)
 
-INSTALL(TARGETS ${target} RUNTIME DESTINATION bin)
+INSTALL(TARGETS ${target} ${test_target} RUNTIME DESTINATION bin)

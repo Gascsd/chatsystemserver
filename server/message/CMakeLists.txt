@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.20) 
 
-project(transmite_server)
+project(message_server)
 
-set(target "transmite_server")
+set(target "message_server")
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 
 set(proto_path ${CMAKE_CURRENT_SOURCE_DIR}/../proto)
-set(proto_files base.proto user.proto transmite.proto)
+set(proto_files base.proto file.proto user.proto message.proto)
 
 set(proto_hxx "")
 set(proto_cxx "")
@@ -31,7 +31,7 @@ endforeach()
 # 3. 检测并生成odb框架代码
 # 3.1 添加所需的odb映射代码名称
 set(odb_path ${CMAKE_CURRENT_SOURCE_DIR}/../odb)
-set(odb_files chat_session_member.hxx)
+set(odb_files message.hxx)
 # 3.2 检测框架代码是否已经生成
 set(odb_hxx "")
 set(odb_cxx "")
@@ -55,28 +55,29 @@ foreach(odb_file ${odb_files})
     list(APPEND odb_srcs ${CMAKE_CURRENT_BINARY_DIR}/${odb_cxx}) # stduent-odb.cxx classes-odb.cxx
 endforeach(odb_file odb_files)
 
+# 查找指定库
+# find_package(amqpcpp REQUIRED)
 
 set(src_files "")
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/source src_files)
 add_executable(${target} ${src_files} ${proto_srcs} ${odb_srcs})
 
+# 添加库路径
+# link_directories(/usr/lib)
+
 target_link_libraries(${target} -lgflags
     -lspdlog -lfmt -lbrpc -lssl -lcrypto 
     -lprotobuf -lleveldb -letcd-cpp-api 
     -lcpprest -lcurl -lodb-mysql -lodb -lodb-boost
-    /usr/lib/libamqpcpp.so.4.3 -lev -lpthread
+    /usr/lib/x86_64-linux-gnu/libjsoncpp.so.19
+    -lcpr -lelasticlient
+    /usr/lib/libamqpcpp.so.4.3.27 -lev
     )
-
-set(transmite_user_client "transmite_user_client")
-set(transmite_user_files ${CMAKE_CURRENT_SOURCE_DIR}/test/user_client.cc)
-add_executable(${transmite_user_client} ${transmite_user_files} ${proto_srcs})
-target_link_libraries(${transmite_user_client} -lgflags -lgtest -lspdlog -lfmt -lbrpc -lssl -lcrypto -lprotobuf -lleveldb -letcd-cpp-api -lcpprest -lcurl /usr/lib/x86_64-linux-gnu/libjsoncpp.so.19)
-
-set(transmite_client "transmite_client")
-set(transmite_files ${CMAKE_CURRENT_SOURCE_DIR}/test/transmite_client.cc)
-add_executable(${transmite_client} ${transmite_files} ${proto_srcs})
-target_link_libraries(${transmite_client} -lgflags -lgtest -lspdlog -lfmt -lbrpc -lssl -lcrypto -lprotobuf -lleveldb -letcd-cpp-api -lcpprest -lcurl /usr/lib/x86_64-linux-gnu/libjsoncpp.so.19)
-
+set(test_target "message_client")
+set(test_files "")
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/test test_files)
+add_executable(${test_target} ${test_files} ${proto_srcs})
+target_link_libraries(${test_target} -lgflags -lgtest -lspdlog -lfmt -lbrpc -lssl -lcrypto -lprotobuf -lleveldb -letcd-cpp-api -lcpprest -lcurl /usr/lib/x86_64-linux-gnu/libjsoncpp.so.19)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../common)
@@ -84,4 +85,4 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../odb)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../third/include)
 
 
-INSTALL(TARGETS ${target} ${transmite_user_client} ${transmite_client} RUNTIME DESTINATION bin)
+INSTALL(TARGETS ${target} ${test_target} RUNTIME DESTINATION bin)

@@ -35,9 +35,27 @@ void reg_user(const std::string &nickname, const std::string &pswd)
     ASSERT_FALSE(cntl.Failed());
     ASSERT_TRUE(rsp.success());
 }
+void set_user_avatar(const std::string& uid, const std::string &avatar)
+{
+    auto channel = _user_channels->choose(FLAGS_user_service); // 获取通信信道
+    ASSERT_TRUE(channel);
 
+    zht_im::SetUserAvatarReq req;
+    req.set_request_id(zht_im::uuid());
+    req.set_user_id(uid);
+    req.set_session_id("测试登录会话ID1");
+    req.set_avatar(avatar);
+
+    zht_im::SetUserAvatarRsp rsp;
+    brpc::Controller cntl;
+    zht_im::UserService_Stub stub(channel.get());
+    stub.SetUserAvatar(&cntl, &req, &rsp, nullptr);
+    ASSERT_FALSE(cntl.Failed());
+    ASSERT_TRUE(rsp.success());
+}
 int main(int argc, char *argv[])
 {
+    testing::InitGoogleTest(&argc, argv);
     google::ParseCommandLineFlags(&argc, &argv, true);
     zht_im::init_logger(FLAGS_run_mode, FLAGS_log_file, FLAGS_log_level);
 
@@ -48,7 +66,9 @@ int main(int argc, char *argv[])
     auto del_cb = std::bind(&zht_im::ServiceManager::onServiceOffline, _user_channels.get(), std::placeholders::_1, std::placeholders::_2);
     // 2. 构造服务发现对象
     zht_im::Discovery::ptr dclient = std::make_shared<zht_im::Discovery>(FLAGS_etcd_host, FLAGS_base_service, put_cb, del_cb);
-    reg_user("张三", "123456");
-    reg_user("李四", "123456");
+    // reg_user("张三", "123456");
+    // reg_user("李四", "123456");
+    set_user_avatar("3ff2-7ad3-b7de-0000", "张三头像数据");
+    set_user_avatar("cb7d-01fc-63c8-0001", "李四头像数据");
     return 0;
 }

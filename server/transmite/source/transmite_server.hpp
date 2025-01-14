@@ -9,7 +9,7 @@
 #include "etcd.hpp"   // 服务注册模块封装
 #include "logger.hpp" // 日志模块封装
 #include "rabbitmq.hpp"
-#include "data_mysql.hpp"
+#include "mysql_chat_session_member.hpp"
 #include "utils.hpp"
 
 #include "base.pb.h"
@@ -30,18 +30,21 @@ namespace zht_im
 
         // 消息队列客户端的句柄
         std::string _exchange_name;
+        std::string _routing_key;
         MQClient::ptr _mq_client;
 
     public:
         MsgTransmitServiceImpl(const std::string &user_service_name,
                                const ServiceManager::ptr &mm_channels,
                                const std::shared_ptr<odb::core::database> &mysql_client,
-                               const std::string exchange_name,
+                               const std::string &exchange_name,
+                               const std::string &routing_key,
                                MQClient::ptr &mq_client)
             : _user_service_name(user_service_name),
               _mm_channels(mm_channels),
               _mysql_session_member_table(std::make_shared<ChatSessionMemberTable>(mysql_client)),
               _exchange_name(exchange_name),
+              _routing_key(routing_key),
               _mq_client(mq_client)
         {
         }
@@ -93,7 +96,7 @@ namespace zht_im
             message.mutable_sender()->CopyFrom(rsp.user_info());
             message.mutable_message()->CopyFrom(content);
             // 4. 将消息序列化后发布到 MQ 消息队列中，让消息存储子服务对消息进行持久化存储
-            bool ret = _mq_client->publish(_exchange_name, message.SerializeAsString());
+            bool ret = _mq_client->publish(_exchange_name, message.SerializeAsString(), _routing_key);
             if(ret == false)
             {
                 LOG_ERROR("{} 持久化消息发布失败 ", rid);
@@ -173,6 +176,7 @@ namespace zht_im
                             const std::string &exchange_name, const std::string &queue_name, const std::string &binding_key)
         {
             _exchange_name = exchange_name;
+            _routing_key = binding_key;
             _mq_client = std::make_shared<MQClient>(user, passwd, host);
             _mq_client->declareComponents(exchange_name, queue_name, binding_key);
         }
@@ -197,7 +201,7 @@ namespace zht_im
 
             _rpc_server = std::make_shared<brpc::Server>();
 
-            MsgTransmitServiceImpl *transmit_service = new MsgTransmitServiceImpl(_user_service_name, _mm_channels, _mysql_client,_exchange_name, _mq_client);
+            MsgTransmitServiceImpl *transmit_service = new MsgTransmitServiceImpl(_user_service_name, _mm_channels, _mysql_client,_exchange_name, _routing_key, _mq_client);
             int ret = _rpc_server->AddService(transmit_service, brpc::ServiceOwnership::SERVER_OWNS_SERVICE);
             if (ret == -1)
             {
@@ -240,6 +244,7 @@ namespace zht_im
         ServiceManager::ptr _mm_channels;
 
         std::string _exchange_name;
+        std::string _routing_key;
         MQClient::ptr _mq_client;
 
         Registrant::ptr _registry_client;                   // 服务注册客户端

@@ -65,6 +65,8 @@ namespace zht_im
             for (int i = 0; i < request->file_id_list_size(); ++i)
             {
                 std::string fileId = request->file_id_list(i);
+                // 这里加上一个判空，提高程序健壮性，否则如果不小心传进来一个空的id，就会直接程序崩溃
+                if(fileId.empty()) continue;
                 std::string filename = _storage_path + fileId;
                 std::string body;
                 bool ret = zht_im::readFile(filename, body);

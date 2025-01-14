@@ -5,7 +5,7 @@
 #include <butil/logging.h>
 
 #include "data_es.hpp"          // es数据管理客户端封装
-#include "data_mysql.hpp"       // es数据管理客户端封装
+#include "mysql_user.hpp"       // es数据管理客户端封装
 #include "data_redis.hpp"       // es数据管理客户端封装
 #include "etcd.hpp"             // 服务注册模块封装
 #include "logger.hpp"           // 日志模块封装

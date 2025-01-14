@@ -119,7 +119,8 @@ namespace zht_im
             : _name(name), _type(type), _client(client)
         {
         }
-        ESInsert &append(const std::string &key, const std::string &val)
+        template<typename T>
+        ESInsert &append(const std::string &key, const T &val)
         {
             _item[key] = val;
             return *this;
@@ -189,6 +190,7 @@ namespace zht_im
         std::string _name;
         std::string _type;
         Json::Value _must_not;
+        Json::Value _must;
         Json::Value _should;
         std::shared_ptr<elasticlient::Client> _client;
 
@@ -218,6 +220,24 @@ namespace zht_im
             _should.append(match);
             return *this;
         }
+        ESSearch &append_must_term(const std::string &key, const std::string &val)
+        {
+            Json::Value field;
+            field[key] = val;
+            Json::Value term;
+            term["term"] = field;
+            _must.append(term);
+            return *this;
+        }
+        ESSearch &append_must_match(const std::string &key, const std::string &val)
+        {
+            Json::Value field;
+            field[key] = val;
+            Json::Value match;
+            match["match"] = field;
+            _must.append(match);
+            return *this;
+        }
         Json::Value search()
         {
             Json::Value cond;
@@ -225,6 +245,8 @@ namespace zht_im
                 cond["must_not"] = _must_not;
             if (_should.empty() == false)
                 cond["should"] = _should;
+            if (_must.empty() == false)
+                cond["must"] = _must;
             Json::Value query;
             query["bool"] = cond;
 

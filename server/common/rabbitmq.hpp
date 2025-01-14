@@ -14,7 +14,7 @@ namespace zht_im
     public:
         using MessageCallback = std::function<void(const char *, size_t)>;
         using ptr = std::shared_ptr<MQClient>;
-#define DEFAULT_ROUTING_KEY "routing_key"
+
     private:
         struct ev_async _async_watcher;
         struct ev_loop *_loop;
@@ -38,8 +38,7 @@ namespace zht_im
             AMQP::Address address(url);
             _connection = std::make_unique<AMQP::TcpConnection>(_handler.get(), address);
             _channel = std::make_unique<AMQP::TcpChannel>(_connection.get());
-            _loop_thread = std::thread([this]()
-                                       { ev_run(_loop, 0); });
+            _loop_thread = std::thread([this](){ ev_run(_loop, 0); });
         }
         ~MQClient()
         {
@@ -50,7 +49,7 @@ namespace zht_im
             _loop = nullptr;
         }
         void declareComponents(const std::string &exchange, const std::string &queue,
-                               const std::string &routing_key = DEFAULT_ROUTING_KEY, int32_t exchage_type = AMQP::ExchangeType::direct)
+                               const std::string &routing_key = "routing_key", int32_t exchage_type = AMQP::ExchangeType::direct)
         {
             _channel->declareExchange(exchange, AMQP::ExchangeType::direct)
                 .onError([](const char *message)
@@ -76,7 +75,7 @@ namespace zht_im
                 .onSuccess([exchange, queue]()
                            { LOG_INFO("{} - {}绑定成功", exchange, queue); });
         }
-        bool publish(const std::string &exchage, const std::string &msg, const std::string &routing_key = DEFAULT_ROUTING_KEY)
+        bool publish(const std::string &exchage, const std::string &msg, const std::string &routing_key = "routing_key")
         {
             bool ret = _channel->publish(exchage, routing_key, msg);
             if (ret == false)
@@ -89,14 +88,14 @@ namespace zht_im
         void consume(const std::string &queue, const MessageCallback &cb, const std::string &tag = "consume-tag")
         {
             _channel->consume(queue, tag)
-                .onReceived([this, &cb](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered)
-                            {
-                cb(message.body(), message.bodySize());
-                _channel->ack(deliveryTag); })
-                .onError([queue](const char *message)
-                         {
-                LOG_ERROR("订阅 {} 队列消息失败: {}", queue, message);
-                exit(0); });
+                .onReceived([this, cb](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered) {
+                    cb(message.body(), message.bodySize());
+                    _channel->ack(deliveryTag); 
+                })
+                .onError([queue](const char *message)  {
+                    LOG_ERROR("订阅 {} 队列消息失败: {}", queue, message);
+                    exit(0); 
+                });
         }
     };
 }
