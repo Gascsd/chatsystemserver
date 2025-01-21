@@ -1,7 +1,0 @@
-/home/zht/chatsystemserver/server/friend/build/CMakeFiles/friend_server.dir
-/home/zht/chatsystemserver/server/friend/build/CMakeFiles/edit_cache.dir
-/home/zht/chatsystemserver/server/friend/build/CMakeFiles/rebuild_cache.dir
-/home/zht/chatsystemserver/server/friend/build/CMakeFiles/list_install_components.dir
-/home/zht/chatsystemserver/server/friend/build/CMakeFiles/install.dir
-/home/zht/chatsystemserver/server/friend/build/CMakeFiles/install/local.dir
-/home/zht/chatsystemserver/server/friend/build/CMakeFiles/install/strip.dir
