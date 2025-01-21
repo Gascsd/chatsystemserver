@@ -103,11 +103,13 @@ int main(int argc, char *argv[])
     // 2. 构造服务发现对象
     zht_im::Discovery::ptr dclient = std::make_shared<zht_im::Discovery>(FLAGS_etcd_host, FLAGS_base_service, put_cb, del_cb);
 
-    string_message("3ff2-7ad3-b7de-0000", "会话ID1", "吃饭了吗？");
-    string_message("cb7d-01fc-63c8-0001", "会话ID1", "吃了兰州拉面");
-    image_message("3ff2-7ad3-b7de-0000", "会话ID1", "可爱表情包图片数据");
-    speech_message("3ff2-7ad3-b7de-0000", "会话ID1", "语音：吃饭了吗？数据");
-    file_message("3ff2-7ad3-b7de-0000", "会话ID1", "这是文件名称", "这是文件数据");
+    // string_message("3ff2-7ad3-b7de-0000", "会话ID1", "吃饭了吗？");
+    // string_message("cb7d-01fc-63c8-0001", "会话ID1", "吃了兰州拉面");
+    // image_message("3ff2-7ad3-b7de-0000", "会话ID1", "可爱表情包图片数据");
+    // speech_message("3ff2-7ad3-b7de-0000", "会话ID1", "语音：吃饭了吗？数据");
+    // file_message("3ff2-7ad3-b7de-0000", "会话ID1", "这是文件名称", "这是文件数据");
+
+    file_message("8027-8369-e102-0004", "eab6-8331-546d-0000", "猪爸爸发送给猪妈妈的文件名称", "猪爸爸的文件数据");
 
     return 0;
 }

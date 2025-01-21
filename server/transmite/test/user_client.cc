@@ -66,9 +66,22 @@ int main(int argc, char *argv[])
     auto del_cb = std::bind(&zht_im::ServiceManager::onServiceOffline, _user_channels.get(), std::placeholders::_1, std::placeholders::_2);
     // 2. 构造服务发现对象
     zht_im::Discovery::ptr dclient = std::make_shared<zht_im::Discovery>(FLAGS_etcd_host, FLAGS_base_service, put_cb, del_cb);
-    // reg_user("张三", "123456");
-    // reg_user("李四", "123456");
-    set_user_avatar("3ff2-7ad3-b7de-0000", "张三头像数据");
-    set_user_avatar("cb7d-01fc-63c8-0001", "李四头像数据");
+    reg_user("猪爸爸", "123456");
+    reg_user("猪妈妈", "123456");
+    reg_user("小猪佩奇", "123456");
+    reg_user("小猪乔治", "123456");
+    std::string fuid, muid, puid, quid;
+    std::cout << "输入猪爸爸的uid";
+    std::cin >> fuid;
+    std::cout << "输入猪妈妈的uid";
+    std::cin >> muid;
+    std::cout << "输入小猪佩奇的uid";
+    std::cin >> puid;
+    std::cout << "输入小猪乔治的uid";
+    std::cin >> quid;
+    set_user_avatar(fuid, "猪爸爸头像数据");
+    set_user_avatar(muid, "猪妈妈头像数据");
+    set_user_avatar(puid, "小猪佩奇头像数据");
+    set_user_avatar(quid, "小猪乔治头像数据");
     return 0;
 }
