@@ -22,6 +22,14 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(client
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
+        model/date.h
+        resource.qrc
+        sessionfriendarea.cpp
+        sessionfriendarea.h
+        debug.h
+
+        utils.hpp
+
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET client APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
