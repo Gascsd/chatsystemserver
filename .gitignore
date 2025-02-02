@@ -77,3 +77,12 @@ out/
 *.bak
 *.swp
 .DS_Store
+
+# 通用构建输出和临时文件（适用于所有子目录）
+/build/
+/.qt/
+/.qtc/
+/.qtc_clangd/
+/_clangd/
+/client_autogen/
+/Testing/
