@@ -4,7 +4,7 @@ import "base.proto";
 option cc_generic_services = true;
 message ClientAuthenticationReq {
     string request_id = 1;
-    string session_id = 2;
+    string session_id = 2; // 用户向服务器表明当前长连接的客户端身份
 }
 
 

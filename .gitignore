@@ -1,17 +1,79 @@
-# 忽略client下的build目录的所有内容
-/client/build/*
+# 编译器生成的文件
+*.o
+*.obj
+*.so
+*.dylib
+*.dll
+*.lib
+*.a
+*.exp
+*.pdb
 
-# 忽略所有build目录下的内容
-build/*
+# 可执行文件
+*.exe
 
-# 忽略.DS_Store文件
+# 链接输出
+*.ilk
+
+# 预编译头文件
+*.gch
+*.pch
+
+# Qt项目相关的临时文件
+*.moc
+moc_*.cpp
+qrc_*.cpp
+ui_*.h
+
+# CMake生成的文件
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+cmake_uninstall.cmake
+build/
+compile_commands.json
+
+# vcpkg相关文件
+vcpkg/
+
+# IDE特定文件
+## Visual Studio
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.suo
+*.ntvs*
+*.nupkg
+Thumbs.db
+[Bb]in/
+[Dd]ebug*/
+[Rr]elease*/
+.vs/
+.vscode/
+
+## CLion
+*.iml
+*.ipr
+*.iws
+out/
+.idea/
+
+## Xcode
+*.xcodeproj/
+*.xcworkspace/
+*.mode1v3
+*.mode2v3
+*.pbxuser
+*.perspectivev3
+*.swp
+*.lock
+
+# 其他忽略项
+*.log
+*.tmp
+*.bak
+*.swp
 .DS_Store
-
-# 忽略临时文件
-*~
-
-# 忽略 VSCode 工作区设置
-.vscode
-
-# 忽略 Qt Creator 自动生成的用户特定配置文件
-/client/CMakeLists.txt.user
