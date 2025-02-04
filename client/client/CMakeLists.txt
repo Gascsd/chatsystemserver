@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Protobuf)
 
 set(PROJECT_SOURCES
         main.cpp
@@ -29,7 +29,13 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         debug.h
 
         utils.hpp
-
+        messageshowarea.h messageshowarea.cpp
+        messageeditarea.h messageeditarea.cpp
+        selfinfowidget.h selfinfowidget.cpp
+        userinfowidget.h userinfowidget.cpp
+        sessiondetailwidget.h sessiondetailwidget.cpp
+        choosefrienddialog.h choosefrienddialog.cpp
+        groupsessiondetailwidget.h groupsessiondetailwidget.cpp
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET client APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR

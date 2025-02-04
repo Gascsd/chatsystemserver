@@ -5,6 +5,8 @@
 #include <QPushButton>
 #include <QLineEdit>
 
+#include "messageshowarea.h"
+#include "messageeditarea.h"
 #include "utils.hpp"
 
 class MainWidget : public QWidget
@@ -37,6 +39,10 @@ private:
     // 中间窗口对象
     QLineEdit* searchEdit;                  // 用户搜索框
     QPushButton* addFriendButton;           // 添加好友按钮
+    // 右侧窗口对象
+    QPushButton* extraBtn;                   // 显示会话详情按钮
+    MessageShowArea* messageShowArea;        // 消息展示区
+    MessageEditArea* messageEditArea;        // 消息编辑区
 
 private:
     MainWidget(QWidget *parent = nullptr);

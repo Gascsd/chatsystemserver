@@ -3,9 +3,13 @@
 #include <QVBoxLayout>
 #include <QGridLayout>
 
-#include "model/date.h"
-
+#include "utils.hpp"
 #include "sessionfriendarea.h"
+#include "sessiondetailwidget.h"
+#include "selfinfowidget.h"
+#include "groupsessiondetailwidget.h"
+
+#include "debug.h"
 
 MainWidget* MainWidget::instance = nullptr;
 
@@ -48,7 +52,7 @@ void MainWidget::initMainWindow()
 
     windowLeft->setFixedWidth(60);
     windowMiddle->setFixedWidth(310);
-    windowRight->setMinimumWidth(500);
+    windowRight->setMinimumWidth(700);
 
     windowLeft->setStyleSheet("QWidget { background-color: rgb(46, 46, 46); }");
     windowMiddle->setStyleSheet("QWidget { background-color: rgb(234, 232, 231); }");
@@ -154,7 +158,53 @@ void MainWidget::initMiddleWindow()
 }
 void MainWidget::initRightWindow()
 {
+    LOG() << "初始化右侧窗口";
+    // 1. 创建右侧窗口的布局管理器
+    QVBoxLayout* vlayout = new QVBoxLayout();
+    vlayout->setSpacing(0);
+    vlayout->setContentsMargins(0, 0, 0, 0);
+    vlayout->setAlignment(Qt::AlignTop);
+    windowRight->setLayout(vlayout);
 
+    // 2. 创建上方标题栏
+    QWidget* titleWidget = new QWidget;
+    titleWidget->setFixedHeight(62);
+    titleWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    titleWidget->setObjectName("titleWidget");
+    titleWidget->setStyleSheet("#titleWidget { border-bottom: 1px solid rgb(230, 230, 230); border-left:1px solid rgb(230, 230, 230);}");
+    vlayout->addWidget(titleWidget);
+
+    // 3. 给标题栏添加标题 label 和 一个按钮
+    QHBoxLayout* hlayout = new QHBoxLayout();
+    hlayout->setSpacing(0);
+    hlayout->setContentsMargins(10, 0, 10, 0); // 让标题行距离边界有点距离
+    titleWidget->setLayout(hlayout);
+
+    QLabel* sessionTitleLabel = new QLabel();
+    sessionTitleLabel->setStyleSheet("QLabel { font-size: 20px; border-bottom: 1px solid rgb(230, 230, 230);}");
+#ifdef TEST_UI
+    // 为了测试界面而临时增加的,实际上应该从服务器获取
+    sessionTitleLabel->setText("这是会话标题");
+#endif
+    hlayout->addWidget(sessionTitleLabel);
+
+    extraBtn = new QPushButton();
+    extraBtn->setFixedSize(30, 30);
+    extraBtn->setIconSize(QSize(30, 30));
+    extraBtn->setIcon(QIcon(":/resource/image/more.png"));
+    extraBtn->setStyleSheet("QPushButton { border:none; background-color: rgb(245,245,245);}"
+                            "QPushButton:pressed {background-color: rgb(220,220,220);}");
+    hlayout->addWidget(extraBtn);
+
+    // 4. 添加消息展示区 --宽度和高度都要自适应
+    LOG() << "添加消息展示区";
+    messageShowArea = new MessageShowArea();
+    vlayout->addWidget(messageShowArea);
+
+    // 5. 添加消息编辑区 -- 宽度自适应,高度固定
+    LOG() << "添加消息编辑区";
+    messageEditArea = new MessageEditArea();
+    vlayout->addWidget(messageEditArea, 0, Qt::AlignBottom);
 }
 
 void MainWidget::initSignalSlot()
@@ -163,6 +213,33 @@ void MainWidget::initSignalSlot()
     connect(sessionTableButton, &QPushButton::clicked, this, &MainWidget::switchTableToSession);
     connect(friendTableButton, &QPushButton::clicked, this, &MainWidget::switchTableToFriend);
     connect(applyTableButton, &QPushButton::clicked, this, &MainWidget::switchTableToApply);
+
+    // 点击自己头像的信号槽
+    connect(userAvatar, &QPushButton::clicked, this, [=]() {
+        SelfInfoWidget* selfInfoWidget = new SelfInfoWidget(this);
+        selfInfoWidget->exec(); // 弹出模态会话框
+    });
+
+    // 点击会话详情按钮，弹出会话详情窗口
+    connect(extraBtn, &QPushButton::clicked, this, [=]() {
+        // 判断是单聊还是群聊
+#if TEST_GROUP_SESSION_DETAIL
+        bool isSingleChat = false; // 这个值根据当前选中的实际会话确定，后面接入服务器再确定
+#else
+        bool isSingleChat = true;
+#endif
+        if (isSingleChat) // 单聊
+        {
+            SessionDetailWidget* sessionDetailWidget = new SessionDetailWidget(this);
+            sessionDetailWidget->exec();
+        }
+        else // 群聊
+        {
+            GroupSessionDetailWidget* groupSessionDetailWidget = new GroupSessionDetailWidget(this);
+            groupSessionDetailWidget->exec();
+        }
+    });
+
 }
 
 void MainWidget::switchTableToSession()

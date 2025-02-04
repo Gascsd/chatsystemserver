@@ -9,6 +9,8 @@
 #include <QFile>
 #include <QDebug>
 
+#include "../utils.hpp"
+
 /**
  * 客户端中关于命名空间的约定：
  * 如果代码所在文件，就在项目的顶层目录中，就直接使用全局命名空间（不手动指定）
@@ -21,14 +23,12 @@ namespace model
     // 用户信息
     class UserInfo
     {
-    private:
+    public:
         QString _userId = "";            // 用户Id
         QString _nickname = "";          // 用户昵称
         QString _description = "";       // 用户签名
         QString _phone = "";             // 手机号码
-        QIcon _acatar;                   //  用户头像
-    public:
-
+        QIcon _avatar;                   //  用户头像
     };
 
     enum MessageType
@@ -158,7 +158,7 @@ namespace model
         QString _chatSessionId = "";        // 会话编号
         QString _chatSessionName = "";      // 会话名字，如果是单聊，就是对方的备注/昵称，群聊就是群聊的名字
         Message _lastMessage;               // 上一条会话信息
-        QIcon _acatar;                      // 用户头像，如果是单聊，就是对方的头像，群聊就是群聊的头像
+        QIcon _avatar;                      // 用户头像，如果是单聊，就是对方的头像，群聊就是群聊的头像
         QString _userId = "";               // 对单聊来说，表示对方的userId，对于群聊来说为""
     public:
     };
