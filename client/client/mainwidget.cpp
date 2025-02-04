@@ -8,6 +8,7 @@
 #include "sessiondetailwidget.h"
 #include "selfinfowidget.h"
 #include "groupsessiondetailwidget.h"
+#include "addfrienddialog.h"
 
 #include "debug.h"
 
@@ -240,6 +241,24 @@ void MainWidget::initSignalSlot()
         }
     });
 
+    // 点击 addFriendButton 按钮，弹出添加好友窗口
+    connect(addFriendButton, &QPushButton::clicked, this, [=]() {
+        AddFriendDialog* addFriendDialog = new AddFriendDialog(this);
+        addFriendDialog->exec();
+    });
+
+    // 修改搜索框内容 弹出添加好友对话框
+    connect(searchEdit, &QLineEdit::textEdited, this, [=]() {
+        // 取出当前输入框中的内容，并且设置到新弹窗中的输入框
+        const QString& searchKey = searchEdit->text();
+
+        AddFriendDialog* addFriendDialog = new AddFriendDialog(this);
+        addFriendDialog->setSearchKey(searchKey);
+
+        searchEdit->setText("");
+
+        addFriendDialog->exec();
+    });
 }
 
 void MainWidget::switchTableToSession()
