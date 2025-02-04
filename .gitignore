@@ -34,6 +34,8 @@ CTestTestfile.cmake
 cmake_uninstall.cmake
 build/
 compile_commands.json
+CMakePresets.json
+CMakeUserPresets.json
 
 # vcpkg相关文件
 vcpkg/
