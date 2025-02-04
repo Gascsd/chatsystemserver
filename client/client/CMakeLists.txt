@@ -38,6 +38,9 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         groupsessiondetailwidget.h groupsessiondetailwidget.cpp
         addfrienddialog.h addfrienddialog.cpp
         historymessagewidget.h historymessagewidget.cpp
+        LoginWidget.h LoginWidget.cpp
+        PhoneLoginWidegt.h PhoneLoginWidegt.cpp
+        Toast.h Toast.cpp
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET client APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
