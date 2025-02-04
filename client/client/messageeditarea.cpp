@@ -2,6 +2,9 @@
 
 #include <QHBoxLayout>
 #include <QScrollBar>
+
+#include "historymessagewidget.h"
+
 MessageEditArea::MessageEditArea(QWidget *parent) : QWidget{parent}
 {
     // 1. 设置必要的属性
@@ -68,4 +71,10 @@ MessageEditArea::MessageEditArea(QWidget *parent) : QWidget{parent}
     style += "QPushButton:pressed {background-color: rgb(198, 198, 198);} ";
     sendTextBtn->setStyleSheet(style);
     vlayout->addWidget(sendTextBtn, 0, Qt::AlignRight | Qt::AlignVCenter);
+
+    // 7. 关联信号槽
+    connect(showHistoryBtn, &QPushButton::clicked, this, [=]() {
+        HistoryMessageWidget* historyMessageWidget = new HistoryMessageWidget(this);
+        historyMessageWidget->exec();
+    });
 }
