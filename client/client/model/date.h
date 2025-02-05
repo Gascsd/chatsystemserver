@@ -9,6 +9,8 @@
 #include <QFile>
 #include <QDebug>
 
+#include "base.qpb.h"
+
 #include "../utils.hpp"
 
 /**
@@ -29,6 +31,19 @@ namespace model
         QString _description = "";       // 用户签名
         QString _phone = "";             // 手机号码
         QIcon _avatar;                   //  用户头像
+
+        // 从 protobuf 中的 UserInfo 对象，转成当前代码的 UserInfo 对象
+        void load(const zht_im::UserInfo& userInfo)
+        {
+            _userId = userInfo.userId();
+            _nickname = userInfo.nickname();
+            _description = userInfo.description();
+            _phone = userInfo.phone();
+            if (userInfo.avatar().isEmpty())
+                _avatar = QIcon(":/resource/image/defaultAvatar.png");
+            else
+                _avatar = makeIcon(userInfo.avatar());
+        }
     };
 
     enum MessageType
@@ -74,6 +89,51 @@ namespace model
             else // 触发了未知的消息类型
             {
                 return Message();
+            }
+        }
+        void load(const zht_im::MessageInfo& messageInfo)
+        {
+            _messageId = messageInfo.messageId();
+            _chatSessionId = messageInfo.chatSessionId();
+            _time = formatTime(messageInfo.timestamp());
+            _sender.load(messageInfo.sender());
+
+            zht_im::MessageContent RemoteMsg = messageInfo.message();
+            using RemoteMsgType = zht_im::MessageTypeGadget::MessageType;
+            auto type = RemoteMsg.messageType();
+            if (type == RemoteMsgType::STRING)
+            {
+                _messageType =IMAGE_TYPE;
+                _content = RemoteMsg.stringMessage().content().toUtf8();
+            }
+            else if (type == RemoteMsgType::IMAGE)
+            {
+                _messageType = TEXT_TYPE;
+                if(RemoteMsg.imageMessage().hasImageContent())
+                    _content = RemoteMsg.imageMessage().imageContent();
+                if (RemoteMsg.imageMessage().hasFileId())
+                    _fileId = RemoteMsg.imageMessage().fileId();
+            }
+            else if (type == RemoteMsgType::FILE)
+            {
+                _messageType = FILE_TYPE;
+                if (RemoteMsg.fileMessage().hasFileContents())
+                    _content = RemoteMsg.fileMessage().fileContents();
+                if(messageInfo.message().fileMessage().hasFileId())
+                    _fileId = RemoteMsg.fileMessage().fileId();
+                _fileName = RemoteMsg.fileMessage().fileName();
+            }
+            else if (type == RemoteMsgType::SPEECH)
+            {
+                _messageType = SPEECH_TYPE;
+                if (RemoteMsg.speechMessage().hasFileContents())
+                    _content = RemoteMsg.speechMessage().fileContents();
+                if (messageInfo.message().speechMessage().hasFileId())
+                    _fileId = RemoteMsg.speechMessage().fileId();
+            }
+            else
+            {
+                LOG() << "错误的消息类型 type=" << type;
             }
         }
 
@@ -154,16 +214,38 @@ namespace model
     // 会话信息
     class ChatSessionInfo
     {
-    private:
+    public:
         QString _chatSessionId = "";        // 会话编号
         QString _chatSessionName = "";      // 会话名字，如果是单聊，就是对方的备注/昵称，群聊就是群聊的名字
         Message _lastMessage;               // 上一条会话信息
         QIcon _avatar;                      // 用户头像，如果是单聊，就是对方的头像，群聊就是群聊的头像
         QString _userId = "";               // 对单聊来说，表示对方的userId，对于群聊来说为""
-    public:
+    
+        void load(const zht_im::ChatSessionInfo& chatSessionInfo)
+        {
+            _chatSessionId = chatSessionInfo.chatSessionId();
+            _chatSessionName = chatSessionInfo.chatSessionName();
+            if (chatSessionInfo.hasSingleChatFriendId())
+            {
+                _userId = chatSessionInfo.singleChatFriendId();
+            }
+            if (chatSessionInfo.hasPrevMessage())
+            {
+                _lastMessage.load(chatSessionInfo.prevMessage());
+            }
+            if (chatSessionInfo.hasAvatar() && !chatSessionInfo.avatar().isEmpty())
+            {
+                _avatar = makeIcon(chatSessionInfo.avatar());
+            }
+            else // 没有头像，根据群聊还是单聊来设定不同的头像
+            {
+                if(_userId != "")
+                    _avatar = QIcon(":/resource/image/defaultAvatar.png");
+                else
+                    _avatar = QIcon(":/resource/image/groupAvatar.png");
+            }
+        }
     };
-
-
 } // namespace model
 
 

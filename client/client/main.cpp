@@ -4,6 +4,7 @@
 #include "utils.hpp"
 #include "LoginWidget.h"
 #include "debug.h"
+#include "model/DataCenter.h"
 
 int main(int argc, char *argv[])
 {
@@ -16,6 +17,11 @@ int main(int argc, char *argv[])
     LoginWidget* loginWidget = new LoginWidget(nullptr);
     loginWidget->show();
 #endif // TEST_SKIP_LOGIN
+
+    // 临时的测试代码
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    dataCenter->initDataFile();
+    dataCenter->saveDataFile();
 
     return a.exec();
 }
