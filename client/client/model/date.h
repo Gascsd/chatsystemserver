@@ -10,6 +10,13 @@
 #include <QDebug>
 
 #include "base.qpb.h"
+#include "gateway.qpb.h"
+#include "user.qpb.h"
+#include "file.qpb.h"
+#include "friend.qpb.h"
+#include "speech.qpb.h"
+#include "message.qpb.h"
+#include "transmite.qpb.h"
 
 #include "../utils.hpp"
 
@@ -141,16 +148,7 @@ namespace model
         // 通过这个方法生成唯一的messageId
         static QString makeId()
         {
-            // 这里使用UUID的子串
-            // 创建UUID并转换为字符串形式
-            QString uuid = QUuid::createUuid().toString();
-
-            // 移除UUID字符串两端的大括号
-            uuid.remove(0, 1); // 移除开头的大括号
-            uuid.chop(1);      // 移除末尾的大括号
-
-            // 使用mid方法获取从索引24开始长度为12的子串，并在其前加上"M"
-            return "M" + uuid.mid(24, 12);
+            return "M" + QUuid::createUuid().toString().sliced(25, 12);
         }
         static Message makeTextMessage(const QString& chatSessionId, const UserInfo &sender,const QByteArray &content)
         {

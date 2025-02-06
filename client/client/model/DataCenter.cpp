@@ -53,7 +53,7 @@ namespace model
 		}
 		// 按照Json的格式来写入
 		QJsonObject jsonObj;
-		jsonObj["loginSessionId"] = loginChatSessionId;
+		jsonObj["loginSessionId"] = loginSessionId;
 
 		QJsonObject jsonUnread;
 		for (auto it = unreadMessageCount->begin(); it != unreadMessageCount->end(); ++it)
@@ -96,8 +96,8 @@ namespace model
 		}
 
 		QJsonObject jsonObj = jsonDoc.object();
-		loginChatSessionId = jsonObj["loginSessionId"].toString();
-		LOG() << "loginSessionId=" << loginChatSessionId;
+		loginSessionId = jsonObj["loginSessionId"].toString();
+		LOG() << "loginSessionId=" << loginSessionId;
 		unreadMessageCount->clear();
 		QJsonObject jsonUnread = jsonObj["unread"].toObject();
 		for (auto it = jsonUnread.begin(); it != jsonUnread.end(); ++it)
@@ -105,17 +105,23 @@ namespace model
 			unreadMessageCount->insert(it.key(), it.value().toInt());
 		}
 		file.close();
-
 	}
 
-	DataCenter::DataCenter()
+	DataCenter::DataCenter()  : netClient(this)
 	{
-		recentMessage = new QHash<QString, QList<Message>>();
+		// 此处只是把这几个 hash 类型的属性 new 出实例. 其他的 QList 类型的属性, 都暂时不实例化.
+		// 主要是为了使用 nullptr 表示 "非法状态"
+		// 对于 hash 来说, 不关心整个 QHash 是否是 nullptr, 而是关心, 某个 key 对应的 value 是否存在~~
+		// 通过 key 是否存在, 也能表示该值是否有效.
+		recentMessages = new QHash<QString, QList<Message>>();
 		memberList = new QHash<QString, QList<UserInfo>>();
 		unreadMessageCount = new QHash<QString, int>();
 
+		// 加载数据
 		loadDataFile();
 	}
+
+
 	DataCenter::~DataCenter()
 	{
 		delete myself;
@@ -123,7 +129,7 @@ namespace model
 		delete chatSessionList;
 		delete memberList;
 		delete applyList;
-		delete recentMessage;
+		delete recentMessages;
 		delete unreadMessageCount;
 		delete searchUserResult;
 		delete searchMessage;

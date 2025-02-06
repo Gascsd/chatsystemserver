@@ -18,10 +18,15 @@ int main(int argc, char *argv[])
     loginWidget->show();
 #endif // TEST_SKIP_LOGIN
 
-    // 临时的测试代码
+    //// 临时的测试代码
+    //model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    //dataCenter->initDataFile();
+    //dataCenter->saveDataFile();
+
+#if TEST_NETWORK
     model::DataCenter* dataCenter = model::DataCenter::getInstance();
-    dataCenter->initDataFile();
-    dataCenter->saveDataFile();
+    dataCenter->ping();
+#endif
 
     return a.exec();
 }
