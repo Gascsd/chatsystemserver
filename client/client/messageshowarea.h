@@ -19,6 +19,8 @@ public:
     void addFrontMessage(bool isLeft, const Message& message); // 头茬
     void clear(); // 清空消息
 
+    void scrollToEnd(); // 滚动到末尾
+
 private:
     QWidget* container;
 };

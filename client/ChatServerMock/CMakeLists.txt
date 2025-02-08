@@ -9,6 +9,10 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if(APPLE) # 设置在MacOS下的Qt路径
+    set(CMAKE_PREFIX_PATH /Users/zht/Qt/6.7.3/macos)
+endif()
+
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Protobuf HttpServer WebSockets)
 

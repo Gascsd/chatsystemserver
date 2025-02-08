@@ -110,12 +110,12 @@ namespace model
             auto type = RemoteMsg.messageType();
             if (type == RemoteMsgType::STRING)
             {
-                _messageType =IMAGE_TYPE;
+                _messageType =TEXT_TYPE;
                 _content = RemoteMsg.stringMessage().content().toUtf8();
             }
             else if (type == RemoteMsgType::IMAGE)
             {
-                _messageType = TEXT_TYPE;
+                _messageType = IMAGE_TYPE;
                 if(RemoteMsg.imageMessage().hasImageContent())
                     _content = RemoteMsg.imageMessage().imageContent();
                 if (RemoteMsg.imageMessage().hasFileId())

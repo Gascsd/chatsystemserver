@@ -12,6 +12,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 file(GLOB PB_FILES "./proto/*.proto")
 
+if(APPLE) # 设置在MacOS下的Qt路径
+    set(CMAKE_PREFIX_PATH /Users/zht/Qt/6.7.3/macos)
+endif()
+
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Network WebSockets Protobuf)
 

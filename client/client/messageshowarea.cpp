@@ -3,6 +3,7 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QPushButton>
+#include <QTimer>
 #include <qlabel.h>
 #include <qscrollbar.h>
 
@@ -85,6 +86,19 @@ void MessageShowArea::clear()
             delete item->widget();
         }
     }
+}
+
+void MessageShowArea::scrollToEnd()
+{
+    // 延时一段时间之后再执行
+    QTimer* timer = new QTimer();
+    connect(timer, &QTimer::timeout, this, [=]() {
+        int maxValue = this->verticalScrollBar()->maximum();
+        this->verticalScrollBar()->setValue(maxValue);
+        timer->stop();
+        timer->deleteLater();
+    });
+    timer->start(500);
 }
 
 MessageItem::MessageItem(bool isLeft) : isLeft(isLeft) {}

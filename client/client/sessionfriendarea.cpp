@@ -1,5 +1,5 @@
 #include "sessionfriendarea.h"
-
+#include "mainwidget.h"
 #include <QScrollBar>
 #include <QVBoxLayout>
 #include <QPushButton>
@@ -230,8 +230,12 @@ SessionItem::SessionItem(QWidget *owner, const QString &chatSessionId, const QIc
 
 void SessionItem::active()
 {
-    // TODO 点击之后要加载历史会话内容
+    // 点击之后要加载历史会话内容
     LOG() << "点击 SessionItem 触发的逻辑, chatSessionId=" << chatSessionId;
+
+    // 记载历史会话内容需要涉及到：当前内存中数据的操作、网络通信、界面的变更，所以用主界面来操作
+    MainWidget*  mainWidget = MainWidget::getInstance();
+    mainWidget->loadRecentMessage(chatSessionId);
 }
 
 FriendItem::FriendItem(QWidget *owner, const QString &userId, const QIcon &avatar, const QString &name, const QString &description)

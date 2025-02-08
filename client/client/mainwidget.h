@@ -45,8 +45,7 @@ private:
     QPushButton* extraBtn;                   // 显示会话详情按钮
     MessageShowArea* messageShowArea;        // 消息展示区
     MessageEditArea* messageEditArea;        // 消息编辑区
-
-
+    QLabel* sessionTitleLabel;               // 消息展示区标题
 
 private:
     MainWidget(QWidget *parent = nullptr);
@@ -68,5 +67,10 @@ private:
 
     void updateFriendList();
     void updateChatSessionList();
+    void updateApplyList();
+
+public:
+    void loadRecentMessage(const QString& chatSessionId);
+    void updateRecentMessage(const QString& chatSessionId);
 };
 #endif // MAINWIDGET_H

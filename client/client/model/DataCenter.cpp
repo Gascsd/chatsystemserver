@@ -169,6 +169,81 @@ namespace model
 		}
 	}
 
+    void DataCenter::getApplyListAsync()
+    {
+        netClient.getApplyList(loginSessionId);
+    }
+
+    QList<UserInfo> *DataCenter::getApplyList()
+    {
+        return applyList;
+    }
+
+    void DataCenter::resetApplyList(std::shared_ptr<zht_im::GetPendingFriendEventListRsp> resp)
+    {
+        if (applyList == nullptr)
+            applyList = new QList<UserInfo>();
+        applyList->clear();
+
+        auto& applyListPB = resp->event();
+        for (auto& a : applyListPB)
+        {
+            UserInfo userInfo;
+            userInfo.load(a.sender());
+            applyList->push_back(userInfo);
+        }
+    }
+
+    QList<Message> *DataCenter::getRecentMessages(const QString &chatSessionId)
+    {
+        if (!recentMessages->contains(chatSessionId))
+        {
+            return nullptr;
+        }
+        return &(*recentMessages)[chatSessionId];
+    }
+
+    void DataCenter::resetRecentMessage(const QString &chatSessionId, std::shared_ptr<zht_im::GetRecentMsgRsp> resp)
+    {
+        // 拿到chatSessionId 对应的消息列表并清空
+        QList<Message>& messageList = (*recentMessages)[chatSessionId];
+        messageList.clear();
+
+        for(auto& m : resp->msgList())
+        {
+            Message message;
+            message.load(m);
+
+            messageList.push_back(message);
+        }
+    }
+
+    ChatSessionInfo *DataCenter::findChatSessionById(const QString &chatSessionId)
+    {
+        if(chatSessionList == nullptr)
+            return nullptr;
+        for(auto& info : *chatSessionList)
+        {
+            if(info._chatSessionId == chatSessionId) return &info;
+        }
+        return nullptr;
+    }
+
+    void DataCenter::setCurrentChatSessionId(const QString &chatSessionId)
+    {
+        currentChatSessionId = chatSessionId;
+    }
+
+    const QString &DataCenter::getCurrentChatSessionId(const QString &chatSessionId)
+    {
+        return currentChatSessionId;
+    }
+
+    void DataCenter::getRecentMessagesListAsync(const QString &chatSessionId)
+    {
+        netClient.getRecentMessagesList(loginSessionId, chatSessionId);
+    }
+
 	DataCenter::DataCenter()  : netClient(this)
 	{
 		// 此处只是把这几个 hash 类型的属性 new 出实例. 其他的 QList 类型的属性, 都暂时不实例化.

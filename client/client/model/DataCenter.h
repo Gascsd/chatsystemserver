@@ -53,10 +53,30 @@ namespace model
 		QList<ChatSessionInfo>* getChatSessionList() const { return chatSessionList; }
 		void resetChatSessionList(std::shared_ptr<zht_im::GetChatSessionListRsp> resp);
 
+        // 获取申请列表
+        void getApplyListAsync();
+        QList<UserInfo>* getApplyList();
+        void resetApplyList(std::shared_ptr<zht_im::GetPendingFriendEventListRsp> resp);
+
+        // 获取指定会话的最近消息
+        void getRecentMessagesListAsync(const QString &chatSessionId);
+        QList<Message>* getRecentMessages(const QString& chatSessionId);
+        void resetRecentMessage(const QString& chatSessionId, std::shared_ptr<zht_im::GetRecentMsgRsp> resp);
+
+        // 根据会话ID查询会话信息
+        ChatSessionInfo* findChatSessionById(const QString& chatSessionId);
+        // 获取/设置当前选中的会话
+        void setCurrentChatSessionId(const QString& chatSessionId);
+        const QString& getCurrentChatSessionId(const QString& chatSessionId);
+
+
+
 	signals:
 		//自定义信号
 		void getMyselfDone();
 		void getFriendListDone();
 		void getChatSessionListDone();
+        void getApplyListDone();
+        void getRecentMessageListDone(const QString chatSessionId);
 	};  
 } // namespace model

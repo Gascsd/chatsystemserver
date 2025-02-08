@@ -183,7 +183,7 @@ void MainWidget::initRightWindow()
     hlayout->setContentsMargins(10, 0, 10, 0); // 让标题行距离边界有点距离
     titleWidget->setLayout(hlayout);
 
-    QLabel* sessionTitleLabel = new QLabel();
+    sessionTitleLabel = new QLabel();
     sessionTitleLabel->setStyleSheet("QLabel { font-size: 20px; border-bottom: 1px solid rgb(230, 230, 230);}");
 #if TEST_UI
     // 为了测试界面而临时增加的,实际上应该从服务器获取
@@ -273,11 +273,10 @@ void MainWidget::initSignalSlot()
         });
     dataCenter->getMyselfAsync();
 
-    // 获取好友列表
-    // loadFriendList();
-
-    // 获取会话列表，默认就是这个
+    // 在客户端初始化的时候就获取好友列表、会话列表、申请列表
+    loadFriendList();
     loadSessionList();
+    loadApplyList();
 }
 
 void MainWidget::switchTableToSession()
@@ -353,10 +352,20 @@ void MainWidget::loadFriendList()
     }
 }
 // 加载申请列表
-void MainWidget::loadApplyList()
+void MainWidget:: loadApplyList()
 {
     LOG() << "加载申请列表";
-    
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    if (dataCenter->getApplyList() != nullptr)// 从内存中获取
+    {
+        updateApplyList();
+    }
+    else // 从网络中加载
+    {
+        // 通过最后一个参数保证信号槽不会重复绑定
+        connect(dataCenter, &model::DataCenter::getApplyListDone, this, &MainWidget::updateApplyList, Qt::UniqueConnection);
+        dataCenter->getApplyListAsync();
+    }
 }
 
 void MainWidget::updateFriendList()
@@ -390,7 +399,7 @@ void MainWidget::updateChatSessionList()
     for (const auto& c : *chatSessionList)
     {
         // 根据消息类型判定显示最后一条消息的内容
-        LOG() << "收到的会话列表中最后一条消息, chatSessionId=" << c._chatSessionId << "消息类型=" << c._lastMessage._messageType << " chatSessionName=" << c._chatSessionName << " 消息内容=" << c._lastMessage._content;
+        // LOG() << "收到的会话列表中最后一条消息, chatSessionId=" << c._chatSessionId << "消息类型=" << c._lastMessage._messageType << " chatSessionName=" << c._chatSessionName << " 消息内容=" << c._lastMessage._content;
         QString showMsg;
         if (c._lastMessage._messageType == model::TEXT_TYPE) showMsg = c._lastMessage._content;
         else if (c._lastMessage._messageType == model::SPEECH_TYPE) showMsg = QString("[语音] " + c._lastMessage._content.size() + '\"');
@@ -402,4 +411,59 @@ void MainWidget::updateChatSessionList()
         }
         sessionFriendArea->addItem(SessionItemType, c._userId, c._avatar, c._chatSessionName, showMsg);
     }
+}
+
+void MainWidget::updateApplyList()
+{
+    if (activeTab != APPLY_LIST) return;
+
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    auto applyList = dataCenter->getApplyList();
+
+    sessionFriendArea->clear();
+
+    for (const auto& f : *applyList)
+    {
+        sessionFriendArea->addItem(ApplyItemType, f._userId, f._avatar, f._nickname, f._description);
+    }
+}
+
+void MainWidget::loadRecentMessage(const QString &chatSessionId)
+{
+    // 先判断本地内存中是否存在数据，如果有就直接加载，如果没有的话就就从网络中获取
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    if (dataCenter->getRecentMessages(chatSessionId) != nullptr)
+    {
+        updateRecentMessage(chatSessionId);
+    }
+    else
+    {
+        connect(dataCenter, &model::DataCenter::getRecentMessageListDone, this, &MainWidget::updateRecentMessage, Qt::UniqueConnection);
+        dataCenter->getRecentMessagesListAsync(chatSessionId);
+    }
+}
+
+void MainWidget::updateRecentMessage(const QString &chatSessionId)
+{
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    auto recentMessage = dataCenter->getRecentMessages(chatSessionId);
+    messageShowArea->clear();
+    // 由于用户首先看到的是最近的消息，所以我们选择先加载最近消息
+    for(int i =  recentMessage->size() - 1; i >= 0; --i)
+    {
+        const Message& message = recentMessage->at(i);
+        bool isLeft = message._sender._userId != dataCenter->getMyself()->_userId;
+        messageShowArea->addFrontMessage(isLeft, message);
+    }
+    // 设置会话标题
+    model::ChatSessionInfo* chatSessionInfo = dataCenter->findChatSessionById(chatSessionId);
+    if(chatSessionInfo != nullptr)
+    {
+        sessionTitleLabel->setText(chatSessionInfo->_chatSessionName);
+    }
+    // 保存当前选中的会话
+    dataCenter->setCurrentChatSessionId(chatSessionId);
+
+    // 自动把滚动条滚动到末尾
+    messageShowArea->scrollToEnd();
 }

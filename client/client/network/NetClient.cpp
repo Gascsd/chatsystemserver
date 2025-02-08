@@ -165,4 +165,64 @@ namespace network
 			LOG() << "[获取会话列表] 处理响应完毕 requestId=" << req.requestId();
 			});
 	}
+
+    void NetClient::getApplyList(const QString &loginSessionId)
+    {
+        zht_im::GetPendingFriendEventListReq req;
+        req.setRequestId(makeRequestId());
+        req.setSessionId(loginSessionId);
+        QByteArray body = req.serialize(&serializer);
+        LOG() << "[获取好友申请列表] 发送请求 requestId=" << req.requestId() << ", loginSessionId=" << loginSessionId;
+
+        QNetworkReply* httpResp = sendHttpRequest("/service/friend/get_pending_friend_events", body);
+
+        connect(httpResp, &QNetworkReply::finished, this, [=]() {
+            bool ok = false;
+            QString reason = "";
+            auto resp = handleHttpResponse<zht_im::GetPendingFriendEventListRsp>(httpResp, &ok, &reason);
+            if (!ok)
+            {
+                LOG() << "[获取好友申请列表] 出错, requestId=" << req.requestId() << ", reason = " << reason;
+                return;
+            }
+            // 把响应保存到DataCenter中
+            dataCenter->resetApplyList(resp);
+
+            // 发送信号通知调用逻辑，已经处理完毕响应
+            emit dataCenter->getApplyListDone(); // 这是在发起一个信号
+
+            LOG() << "[获取好友申请列表] 处理响应完毕 requestId=" << req.requestId();
+        });
+    }
+
+    void NetClient::getRecentMessagesList(const QString &loginSessionId, const QString &chatSessionId)
+    {
+        zht_im::GetRecentMsgReq req;
+        req.setRequestId(makeRequestId());
+        req.setSessionId(loginSessionId);
+        req.setChatSessionId(chatSessionId);
+        req.setMsgCount(50); // 这里暂时先定下获取最近50条消息
+        QByteArray body = req.serialize(&serializer);
+        LOG() << "[获取最近消息列表] 发送请求 requestId=" << req.requestId() << ", loginSessionId=" << loginSessionId << " chatSessionId=" << chatSessionId;
+
+        QNetworkReply* httpResp = sendHttpRequest("/service/message_storage/get_recent", body);
+
+        connect(httpResp, &QNetworkReply::finished, this, [=]() {
+            bool ok = false;
+            QString reason = "";
+            auto resp = handleHttpResponse<zht_im::GetRecentMsgRsp>(httpResp, &ok, &reason);
+            if (!ok)
+            {
+                LOG() << "[获取最近消息列表] 出错, requestId=" << req.requestId() << ", reason = " << reason;
+                return;
+            }
+            // 把响应保存到DataCenter中
+            dataCenter->resetRecentMessage(chatSessionId, resp);
+
+            // 发送信号通知调用逻辑，已经处理完毕响应
+            emit dataCenter->getRecentMessageListDone(chatSessionId); // 这是在发起一个信号
+
+            LOG() << "[获取最近消息列表] 处理响应完毕 requestId=" << req.requestId();
+        });
+    }
 } // namespace network

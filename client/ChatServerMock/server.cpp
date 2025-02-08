@@ -320,20 +320,20 @@ QHttpServerResponse HttpServer::getChatSessionList(const QHttpServerRequest &req
         zht_im::MessageInfo messageInfo = makeTextMessageInfo(i, chatSessionInfo.chatSessionId(), avatar);
 
         chatSessionInfo.setPrevMessage(messageInfo);
-        LOG() << "构造一条会话成功，消息内容为: " << chatSessionInfo.prevMessage().message().stringMessage().content() << " 消息类型=" << chatSessionInfo.prevMessage().message().messageType();
+        // LOG() << "构造一条会话成功，消息内容为: " << chatSessionInfo.prevMessage().message().stringMessage().content() << " 消息类型=" << chatSessionInfo.prevMessage().message().messageType();
         pbRsp.chatSessionInfoList().push_back(chatSessionInfo);
     }
 
     // 构造一个群聊会话
-    //QByteArray groupAvatar = loadFileToByteArray(":/resource/image/groupAvatar.png");
-    //zht_im::ChatSessionInfo chatSessionInfo;
-    //chatSessionInfo.setChatSessionId(QString::number(2100));
-    //chatSessionInfo.setChatSessionName("会话" + QString::number(2100));
-    //chatSessionInfo.setSingleChatFriendId("");
-    //chatSessionInfo.setAvatar(groupAvatar);
-    //zht_im::MessageInfo messageInfo = makeTextMessageInfo(0, chatSessionInfo.chatSessionId(), avatar);
-    //chatSessionInfo.setPrevMessage(messageInfo);
-    //pbRsp.chatSessionInfoList().push_back(chatSessionInfo);
+    QByteArray groupAvatar = loadFileToByteArray(":/resource/image/groupAvatar.png");
+    zht_im::ChatSessionInfo chatSessionInfo;
+    chatSessionInfo.setChatSessionId(QString::number(2100));
+    chatSessionInfo.setChatSessionName("会话" + QString::number(2100));
+    chatSessionInfo.setSingleChatFriendId("");
+    chatSessionInfo.setAvatar(groupAvatar);
+    zht_im::MessageInfo messageInfo = makeTextMessageInfo(0, chatSessionInfo.chatSessionId(), avatar);
+    chatSessionInfo.setPrevMessage(messageInfo);
+    pbRsp.chatSessionInfoList().push_back(chatSessionInfo);
 
     // 序列化响应
     QByteArray body = pbRsp.serialize(&serializer);

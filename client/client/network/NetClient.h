@@ -72,6 +72,8 @@ public:
     void getMyself(const QString& loginSessionId);
     void getFriendList(const QString& loginSessionId);
     void getChatSessionList(const QString& loginSessionId);
+    void getApplyList(const QString& loginSessionId);
+    void getRecentMessagesList(const QString& loginSessionId, const QString& chatSessionId);
     
 private:
     model::DataCenter* dataCenter;
