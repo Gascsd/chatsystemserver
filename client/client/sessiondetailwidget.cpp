@@ -76,7 +76,7 @@ SessionDetailWidget::SessionDetailWidget(QWidget *parent)
     layout->addWidget(creatrGroupBtn, 0, 0);
 
     // 4. 添加当前用户信息 （临时构造的假数据）
-#ifdef TEST_UI
+#if TEST_UI
     AvatarItem* currntUser = new AvatarItem(QIcon(":/resource/image/defaultAvatar.png"), "张三123456");
     layout->addWidget(currntUser, 0, 1);
 #endif

@@ -20,7 +20,7 @@ message ClientAuthenticationReq {
         /service/user/username_login                    用户名密码登录
         /service/user/phone_register                    手机号码注册
         /service/user/phone_login                       手机号码登录
-        /service/user/get_user_info                     获取个人信息
+                              获取个人信息
         /service/user/set_avatar                        修改头像
         /service/user/set_nickname                      修改昵称
         /service/user/set_description                   修改签名

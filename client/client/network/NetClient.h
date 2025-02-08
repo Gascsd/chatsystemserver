@@ -16,7 +16,7 @@ class DataCenter;
 }  // end model
 
 namespace network {
-
+     
 class NetClient : public QObject
 {
     Q_OBJECT
@@ -37,6 +37,42 @@ public:
 
     static QString makeRequestId(); // 生成请求Id
 
+    QNetworkReply* sendHttpRequest(const QString& apiPath, const QByteArray& body); // 封装发送请求的逻辑
+
+    template<typename T>
+    std::shared_ptr<T> handleHttpResponse(QNetworkReply* httpResp, bool* ok, QString* reason) // 封装处理响应的逻辑（包括判定HTTP正确定，反序列化，判断业务上的正确定）
+    {
+        // 1. 判定HTTP层面是否出错
+        if (httpResp->error() != QNetworkReply::NoError)
+        {
+            *ok = false;
+            *reason = httpResp->errorString();
+            httpResp->deleteLater();
+            return std::shared_ptr<T>();
+        }
+        // 2. 获取到响应的body
+        QByteArray respBody = httpResp->readAll();
+        // 3. 反序列化body
+        std::shared_ptr<T> respObj = std::make_shared<T>();
+        respObj->deserialize(&serializer, respBody);
+
+        // 4. 判断业务处理是否正确
+        if (!respObj->success())
+        {
+            *ok = false;
+            *reason = respObj->errmsg();
+            httpResp->deleteLater();
+            return std::shared_ptr<T>();
+        }
+        *ok = true;
+        httpResp->deleteLater();
+        return respObj;
+    }
+
+    void getMyself(const QString& loginSessionId);
+    void getFriendList(const QString& loginSessionId);
+    void getChatSessionList(const QString& loginSessionId);
+    
 private:
     model::DataCenter* dataCenter;
 

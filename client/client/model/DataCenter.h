@@ -9,21 +9,6 @@ namespace model
 	{
 		Q_OBJECT
 
-	public:
-
-		static DataCenter* getInstance();
-		~DataCenter();
-
-		void initDataFile(); // 初始化数据文件
-		void saveDataFile(); // 存储数据到文件中
-		void loadDataFile(); // 加载数据文件
-		const QString& getLoginSessionId() const
-		{
-			return loginSessionId;
-		}
-		// 验证网络连通性
-		void ping() { netClient.ping(); }
-
 	private:
 		DataCenter();
 		static DataCenter* instance;
@@ -43,5 +28,35 @@ namespace model
 		QList<Message>* searchMessage = nullptr;					// 历史消息结果
 		QString currentVerifyCodeId = "";							// 短信验证码Id
 
-	};
+	public:
+
+		static DataCenter* getInstance();
+		~DataCenter();
+
+		void initDataFile(); // 初始化数据文件
+		void saveDataFile(); // 存储数据到文件中
+		void loadDataFile(); // 加载数据文件
+		const QString& getLoginSessionId() const { return loginSessionId; }
+		// 验证网络连通性
+		void ping() { netClient.ping(); }
+
+		// 通过网络获取到用户的个人信息，是一个异步函数，只负责发送HTTP请求
+		void getMyselfAsync();
+		UserInfo* getMyself();
+		void resetMyself(std::shared_ptr<zht_im::GetUserInfoRsp> resp);
+
+		void getFriendListAsync(); // 通过网络获取好友列表
+		QList<UserInfo>* getFriendList() const { return friendList; }
+		void resetFriendList(std::shared_ptr<zht_im::GetFriendListRsp> resp);
+
+		void getChatSessionListAsync();
+		QList<ChatSessionInfo>* getChatSessionList() const { return chatSessionList; }
+		void resetChatSessionList(std::shared_ptr<zht_im::GetChatSessionListRsp> resp);
+
+	signals:
+		//自定义信号
+		void getMyselfDone();
+		void getFriendListDone();
+		void getChatSessionListDone();
+	};  
 } // namespace model

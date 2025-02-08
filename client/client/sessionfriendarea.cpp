@@ -42,7 +42,7 @@ SessionFriendArea::SessionFriendArea(QWidget *parent)
     // }
 
     // 构造临时数据调试，之前删掉
-#ifdef TEST_UI
+#if TEST_UI
     QIcon icon(":/resource/image/defaultAvatar.png");
     for(int i = 0; i < 30; ++i)
     {

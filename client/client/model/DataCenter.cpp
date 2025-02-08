@@ -107,6 +107,68 @@ namespace model
 		file.close();
 	}
 
+	void DataCenter::getMyselfAsync()
+	{
+		LOG() << "dataCenter 调用获取个人信息接口";
+		// DataCenter 只是负责 "处理数据"， 真正访问网络进行通信，则是通过NetClient
+		netClient.getMyself(loginSessionId);
+	}
+
+	UserInfo* DataCenter::getMyself()
+	{
+		return myself;
+	}
+
+	void DataCenter::resetMyself(std::shared_ptr<zht_im::GetUserInfoRsp> resp)
+	{
+		if (myself == nullptr)
+		{
+			myself = new UserInfo();
+		}
+		const zht_im::UserInfo& userInfo = resp->userInfo();
+		myself->load(userInfo);
+	}
+
+	void DataCenter::getFriendListAsync()
+	{
+		netClient.getFriendList(loginSessionId);
+	}
+
+	void DataCenter::resetFriendList(std::shared_ptr<zht_im::GetFriendListRsp> resp)
+	{
+		if (friendList == nullptr)
+			friendList = new QList<UserInfo>();
+		friendList->clear();
+
+		QList<zht_im::UserInfo>& friendListPB = resp->friendList();
+		for (auto& f : friendListPB)
+		{
+			UserInfo userInfo;
+			userInfo.load(f);
+			friendList->push_back(userInfo);
+		}
+	}
+
+	void DataCenter::getChatSessionListAsync()
+	{
+		netClient.getChatSessionList(loginSessionId);
+	}
+
+	void DataCenter::resetChatSessionList(std::shared_ptr<zht_im::GetChatSessionListRsp> resp)
+	{
+		if (chatSessionList == nullptr)
+			chatSessionList = new QList<ChatSessionInfo>();
+		chatSessionList->clear();
+
+		auto& chatSessionPB = resp->chatSessionInfoList();
+		for (auto& c : chatSessionPB)
+		{
+			ChatSessionInfo chatSessionInfo;
+			chatSessionInfo.load(c);
+			chatSessionList->push_back(chatSessionInfo);
+		}
+	}
+
 	DataCenter::DataCenter()  : netClient(this)
 	{
 		// 此处只是把这几个 hash 类型的属性 new 出实例. 其他的 QList 类型的属性, 都暂时不实例化.

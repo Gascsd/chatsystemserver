@@ -103,7 +103,7 @@ AddFriendDialog::AddFriendDialog(QWidget *parent)
 	this->initResultArea();
 
 	// 构造假数据
-#ifdef TEST_UI
+#if TEST_UI
 	QIcon avatar(":/resource/image/defaultAvatar.png"); 
 	for (int i = 0; i < 20; ++i)
 	{

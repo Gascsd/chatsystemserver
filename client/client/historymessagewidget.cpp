@@ -175,7 +175,7 @@ HistoryMessageWidget::HistoryMessageWidget(QWidget *parent)
 	});
 
 	// 构造测试数据
-#ifdef TEST_UI
+#if TEST_UI
 	for (int i = 0; i < 30; ++i)
 	{
 		UserInfo sender;

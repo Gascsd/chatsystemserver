@@ -139,7 +139,7 @@ void ChooseFriendDialog::initLeft(QHBoxLayout* layout)
 
     // 4. 这里还需要进一步添加vlayout的元素
     // 先构造测试数据，之后接入服务区再详细处理
-#ifdef TEST_UI
+#if TEST_UI
     QIcon defaultAvatar(":/resource/image/defaultAvatar.png");
     for (int i = 0; i < 30; ++i)
     {
@@ -209,13 +209,13 @@ void ChooseFriendDialog::initRight(QHBoxLayout* layout)
     gridLayout->addWidget(cancelBtn, 2, 5, 1, 3);
 
     // 构造数据测试界面
-#ifdef TEST_UI_1
+#if TEST_UI
     QIcon defaultAvatar(":/resource/image/defaultAvatar.png");
     for (int i = 0; i < 30; ++i)
     {
         this->addSelectedFriend(QString::number(1000 + i), defaultAvatar, "张三" + QString::number(i));
     }
-#endif // TEST_UI_1
+#endif // TEST_UI
 
 }
 

@@ -35,7 +35,7 @@ MessageShowArea::MessageShowArea()
     container->setLayout(layout);
 
     // 添加构造测试数据
-#ifdef TEST_UI
+#if TEST_UI
     UserInfo sender;
     sender._userId = "1000";
     sender._nickname = "张三";

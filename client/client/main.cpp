@@ -26,6 +26,7 @@ int main(int argc, char *argv[])
 #if TEST_NETWORK
     model::DataCenter* dataCenter = model::DataCenter::getInstance();
     dataCenter->ping();
+    // dataCenter->getMyselfAsync();
 #endif
 
     return a.exec();

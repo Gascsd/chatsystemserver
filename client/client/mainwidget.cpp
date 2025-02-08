@@ -11,6 +11,7 @@
 #include "addfrienddialog.h"
 
 #include "debug.h"
+#include "model/DataCenter.h"
 
 MainWidget* MainWidget::instance = nullptr;
 
@@ -74,7 +75,8 @@ void MainWidget::initLeftWindow()
     userAvatar = new QPushButton();
     userAvatar->setFixedSize(45, 45);
     userAvatar->setIconSize(QSize(45, 45));
-    userAvatar->setIcon(QIcon(":/resource/image/defaultAvatar.png"));
+    // 不要设置默认头像
+    //userAvatar->setIcon(QIcon(":/resource/image/defaultAvatar.png"));
     userAvatar->setStyleSheet(
         "QPushButton { background-color: transparent; border: none; }"
         "QPushButton:hover { background-color: transparent; border: none; }"
@@ -141,7 +143,7 @@ void MainWidget::initMiddleWindow()
         "QPushButton:pressed { background-color: rgb(247, 247, 247); }"
         );
 
-    SessionFriendArea* sessionFriendArea = new SessionFriendArea();
+    sessionFriendArea = new SessionFriendArea();
 
     QWidget *spacer1 = new QWidget();
     spacer1->setFixedWidth(10);
@@ -183,7 +185,7 @@ void MainWidget::initRightWindow()
 
     QLabel* sessionTitleLabel = new QLabel();
     sessionTitleLabel->setStyleSheet("QLabel { font-size: 20px; border-bottom: 1px solid rgb(230, 230, 230);}");
-#ifdef TEST_UI
+#if TEST_UI
     // 为了测试界面而临时增加的,实际上应该从服务器获取
     sessionTitleLabel->setText("这是会话标题");
 #endif
@@ -210,6 +212,8 @@ void MainWidget::initRightWindow()
 
 void MainWidget::initSignalSlot()
 {
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+
     // 连接信号槽，处理标签页按钮切换的问题
     connect(sessionTableButton, &QPushButton::clicked, this, &MainWidget::switchTableToSession);
     connect(friendTableButton, &QPushButton::clicked, this, &MainWidget::switchTableToFriend);
@@ -259,6 +263,21 @@ void MainWidget::initSignalSlot()
 
         addFriendDialog->exec();
     });
+
+
+    // 获取个人信息
+    connect(dataCenter, &model::DataCenter::getMyselfDone, this, [=]() {
+        // 从DataCenter中拿到响应的结果,取出头像显示到界面上
+        auto myself = dataCenter->getMyself();
+        userAvatar->setIcon(myself->_avatar);
+        });
+    dataCenter->getMyselfAsync();
+
+    // 获取好友列表
+    // loadFriendList();
+
+    // 获取会话列表，默认就是这个
+    loadSessionList();
 }
 
 void MainWidget::switchTableToSession()
@@ -301,14 +320,86 @@ void MainWidget::switchTableToApply()
 void MainWidget::loadSessionList()
 {
     LOG() << "加载会话列表";
+    if (activeTab != SESSION_LIST) return;
+
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    if (dataCenter->getChatSessionList() != nullptr)// 从内存中获取
+    {
+        updateChatSessionList();
+    }
+    else // 从网络中加载
+    {
+        // 通过最后一个参数保证信号槽不会重复绑定
+        connect(dataCenter, &model::DataCenter::getChatSessionListDone, this, &MainWidget::updateChatSessionList, Qt::UniqueConnection);
+        dataCenter->getChatSessionListAsync();
+    }
 }
 // 加载好友列表
 void MainWidget::loadFriendList()
 {
     LOG() << "加载好友列表";
+    // 好友列表数据是在 DateCenter 中存储的
+    // 判断其中是否有数据，如果有就直接加载，否则就从服务器获取
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    if (dataCenter->getFriendList() != nullptr)// 从内存中获取
+    {
+        updateFriendList();
+    }
+    else // 从网络中加载
+    {
+        // 通过最后一个参数保证信号槽不会重复绑定
+        connect(dataCenter, &model::DataCenter::getFriendListDone, this, &MainWidget::updateFriendList, Qt::UniqueConnection); 
+        dataCenter->getFriendListAsync();
+    }
 }
 // 加载申请列表
 void MainWidget::loadApplyList()
 {
     LOG() << "加载申请列表";
+    
+}
+
+void MainWidget::updateFriendList()
+{
+    // 如果当前不是好友标签页，就不渲染任何元素
+    if (activeTab != FRIEND_LIST) return;
+
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    auto friendList = dataCenter->getFriendList();
+
+    // 先清空之前界面的数据再重新添加
+    sessionFriendArea->clear();
+
+    for (const auto& f : *friendList)
+    {
+        sessionFriendArea->addItem(FriendItemType, f._userId, f._avatar, f._nickname, f._description);
+    }
+}
+
+void MainWidget::updateChatSessionList()
+{
+    // 如果当前不是好友标签页，就不渲染任何元素
+    if (activeTab != SESSION_LIST) return;
+
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    auto chatSessionList = dataCenter->getChatSessionList();
+
+    // 先清空之前界面的数据再重新添加
+    sessionFriendArea->clear();
+
+    for (const auto& c : *chatSessionList)
+    {
+        // 根据消息类型判定显示最后一条消息的内容
+        LOG() << "收到的会话列表中最后一条消息, chatSessionId=" << c._chatSessionId << "消息类型=" << c._lastMessage._messageType << " chatSessionName=" << c._chatSessionName << " 消息内容=" << c._lastMessage._content;
+        QString showMsg;
+        if (c._lastMessage._messageType == model::TEXT_TYPE) showMsg = c._lastMessage._content;
+        else if (c._lastMessage._messageType == model::SPEECH_TYPE) showMsg = QString("[语音] " + c._lastMessage._content.size() + '\"');
+        else if (c._lastMessage._messageType == model::IMAGE_TYPE) showMsg = "[图片]";
+        else if (c._lastMessage._messageType == model::FILE_TYPE) showMsg = QString("[文件] " + c._lastMessage._fileName);
+        else
+        {
+            LOG() << "错误的消息类型 messageType=" << c._lastMessage._messageType;
+        }
+        sessionFriendArea->addItem(SessionItemType, c._userId, c._avatar, c._chatSessionName, showMsg);
+    }
 }

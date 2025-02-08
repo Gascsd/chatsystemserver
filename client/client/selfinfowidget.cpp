@@ -175,7 +175,7 @@ SelfInfoWidget::SelfInfoWidget(QWidget *parent) : QDialog(parent)
     layout->addWidget(phoneLabel, 3, 2);
     layout->addWidget(phoneModifyBtn, 3, 3);
 
-#ifdef TEST_UI
+#if TEST_UI
     idLabel->setText("1234");
     nameLabel->setText("张三");
     descLabel->setText("从今天开始认真敲代码");

@@ -92,7 +92,7 @@ GroupSessionDetailWidget::GroupSessionDetailWidget(QWidget *parent)
 
 
 	// 构造假数据测试
-#ifdef TEST_UI
+#if TEST_UI
 	groupnameLabel->setText("这是一个群聊名称");
 	QIcon avatar(":/resource/image/defaultAvatar.png");
 	for (int i = 0; i < 20; ++i)
