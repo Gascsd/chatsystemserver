@@ -399,6 +399,7 @@ void MainWidget::updateChatSessionList()
     for (const auto& c : *chatSessionList)
     {
         // 根据消息类型判定显示最后一条消息的内容
+        LOG() << "    ";
         // LOG() << "收到的会话列表中最后一条消息, chatSessionId=" << c._chatSessionId << "消息类型=" << c._lastMessage._messageType << " chatSessionName=" << c._chatSessionName << " 消息内容=" << c._lastMessage._content;
         QString showMsg;
         if (c._lastMessage._messageType == model::TEXT_TYPE) showMsg = c._lastMessage._content;
@@ -409,7 +410,7 @@ void MainWidget::updateChatSessionList()
         {
             LOG() << "错误的消息类型 messageType=" << c._lastMessage._messageType;
         }
-        sessionFriendArea->addItem(SessionItemType, c._userId, c._avatar, c._chatSessionName, showMsg);
+        sessionFriendArea->addItem(SessionItemType, c._chatSessionId, c._avatar, c._chatSessionName, showMsg);
     }
 }
 
@@ -459,11 +460,40 @@ void MainWidget::updateRecentMessage(const QString &chatSessionId)
     model::ChatSessionInfo* chatSessionInfo = dataCenter->findChatSessionById(chatSessionId);
     if(chatSessionInfo != nullptr)
     {
+        LOG() << "设置会话标题=" << chatSessionInfo->_chatSessionName;
+        if (sessionTitleLabel == nullptr)
+        {
+            LOG() << "重新创建了会话标题QLabel";
+            sessionTitleLabel = new QLabel();
+        }
         sessionTitleLabel->setText(chatSessionInfo->_chatSessionName);
+    }
+    else
+    {
+        sessionTitleLabel->setText("未在ChatSessionList中找到指定ID");
     }
     // 保存当前选中的会话
     dataCenter->setCurrentChatSessionId(chatSessionId);
 
     // 自动把滚动条滚动到末尾
     messageShowArea->scrollToEnd();
+}
+
+void MainWidget::switchSession(const QString& userId)
+{
+    // 1. 在会话列表中找到对应的会话元素
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    model::ChatSessionInfo* chatSessionInfo = dataCenter->findChatSessionByUserId(userId);
+    if (chatSessionInfo == nullptr)
+    {
+        LOG() << "[严重错误] 当前选中的好友，对应会话不存在";
+        return;
+    }
+    // 2. 将选中的会话置顶
+    dataCenter->topChatSessionInfo(*chatSessionInfo);
+    // 3. 切换到会话列表标签页
+    switchTableToSession();
+    // 4. 加载这个会话的历史消息
+    // 由于已经置顶了，所以进入的话，就是点击第一个
+    sessionFriendArea->clickItem(0);
 }

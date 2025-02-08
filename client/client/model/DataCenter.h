@@ -63,8 +63,12 @@ namespace model
         QList<Message>* getRecentMessages(const QString& chatSessionId);
         void resetRecentMessage(const QString& chatSessionId, std::shared_ptr<zht_im::GetRecentMsgRsp> resp);
 
-        // 根据会话ID查询会话信息
-        ChatSessionInfo* findChatSessionById(const QString& chatSessionId);
+        
+		ChatSessionInfo* findChatSessionById(const QString& chatSessionId);	// 根据会话ID查询会话信息
+		ChatSessionInfo* findChatSessionByUserId(const QString& userId);	// 根据用户Id查找
+
+		void topChatSessionInfo(const ChatSessionInfo& chatSessionInfo); // 把指定会话信息放在头部
+		
         // 获取/设置当前选中的会话
         void setCurrentChatSessionId(const QString& chatSessionId);
         const QString& getCurrentChatSessionId(const QString& chatSessionId);

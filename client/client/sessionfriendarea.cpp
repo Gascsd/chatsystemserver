@@ -248,6 +248,8 @@ void FriendItem::active()
 {
     // TODO 点击之后要切换到对应的会话
     LOG() << "点击 FriendItem 触发的逻辑, userId=" << userId;
+    MainWidget* mainWidget = MainWidget::getInstance();
+    mainWidget->switchSession(userId);
 }
 
 ApplyItem::ApplyItem(QWidget *owner, const QString &userId, const QIcon &avatar, const QString &name)

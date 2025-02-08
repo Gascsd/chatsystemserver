@@ -229,6 +229,35 @@ namespace model
         return nullptr;
     }
 
+	ChatSessionInfo* DataCenter::findChatSessionByUserId(const QString& userId)
+	{
+		if (chatSessionList == nullptr)
+			return nullptr;
+		for (auto& info : *chatSessionList)
+		{
+			if (info._userId == userId) return &info;
+		}
+		return nullptr;
+	}
+
+	void DataCenter::topChatSessionInfo(const ChatSessionInfo& chatSessionInfo)
+	{
+		if (chatSessionList == nullptr)
+			return ;
+		auto it = chatSessionList->begin();
+		for (; it != chatSessionList->end(); ++it)
+		{
+			if (it->_chatSessionId == chatSessionInfo._chatSessionId)
+				break;
+		}
+		if (it == chatSessionList->end()) return; // 正常来说不会出现这种情况
+
+		ChatSessionInfo backup = chatSessionInfo;
+		chatSessionList->erase(it);
+
+		chatSessionList->push_front(backup);
+	}
+
     void DataCenter::setCurrentChatSessionId(const QString &chatSessionId)
     {
         currentChatSessionId = chatSessionId;
