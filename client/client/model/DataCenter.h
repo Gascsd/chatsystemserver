@@ -1,7 +1,7 @@
 #pragma once
 
 #include <QWidget>
-#include "date.h"
+#include "data.h"
 #include "../network/NetClient.h"
 namespace model
 {
@@ -63,6 +63,9 @@ namespace model
         QList<Message>* getRecentMessages(const QString& chatSessionId);
         void resetRecentMessage(const QString& chatSessionId, std::shared_ptr<zht_im::GetRecentMsgRsp> resp);
 
+        void sendTextMessageAsync(const QString& chatSessionId, const QString &content);
+
+        //   ---------------辅助函数------------
         
 		ChatSessionInfo* findChatSessionById(const QString& chatSessionId);	// 根据会话ID查询会话信息
 		ChatSessionInfo* findChatSessionByUserId(const QString& userId);	// 根据用户Id查找
@@ -71,9 +74,10 @@ namespace model
 		
         // 获取/设置当前选中的会话
         void setCurrentChatSessionId(const QString& chatSessionId);
-        const QString& getCurrentChatSessionId(const QString& chatSessionId);
+        const QString& getCurrentChatSessionId();
 
-
+        // 添加消息到dataCenter
+        void addMessage(const Message& message);
 
 	signals:
 		//自定义信号
@@ -82,5 +86,7 @@ namespace model
 		void getChatSessionListDone();
         void getApplyListDone();
         void getRecentMessageListDone(const QString chatSessionId);
+        void sendMessageDone(model::MessageType messageType, const QByteArray& content, const QString& extraInfo);
+        void updateLastMessage(const QString& chatSessionId);
 	};  
 } // namespace model

@@ -4,6 +4,9 @@
 #include <QScrollBar>
 
 #include "historymessagewidget.h"
+#include "mainwidget.h"
+#include "model/DataCenter.h"
+#include "Toast.h"
 
 MessageEditArea::MessageEditArea(QWidget *parent) : QWidget{parent}
 {
@@ -72,9 +75,68 @@ MessageEditArea::MessageEditArea(QWidget *parent) : QWidget{parent}
     sendTextBtn->setStyleSheet(style);
     vlayout->addWidget(sendTextBtn, 0, Qt::AlignRight | Qt::AlignVCenter);
 
-    // 7. 关联信号槽
+    // 7. 统一初始化信号槽
+    initSignalSlot();
+}
+
+void MessageEditArea::initSignalSlot()
+{
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    // 1. 关联显示历史窗口
     connect(showHistoryBtn, &QPushButton::clicked, this, [=]() {
         HistoryMessageWidget* historyMessageWidget = new HistoryMessageWidget(this);
         historyMessageWidget->exec();
     });
+    // 2. 关联发送文本消息
+    connect(sendTextBtn, &QPushButton::clicked, this, &MessageEditArea::SendTextMessage);
+    connect(dataCenter, &model::DataCenter::sendMessageDone, this, &MessageEditArea::addSelfMessage);
 }
+
+void MessageEditArea::SendTextMessage()
+{
+    // 1. 判读是否有会话被选中
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    if(dataCenter->getCurrentChatSessionId().isEmpty())
+    {
+        LOG() << "当前没有选中任何会话";
+        Toast::showMessage("当前没有选中任何会话");
+        return;
+    }
+    // 2. 获取输入框中的内容并清空输入框
+    const QString content = textEdit->toPlainText().trimmed(); // 使用trimmed方法把字符串两边的空白字符去掉
+    if(content.isEmpty())
+    {
+        LOG() << "不能发送空消息";
+        return;
+    }
+    textEdit->setPlainText("");
+    // 3. 通过网络发送消息
+    dataCenter->sendTextMessageAsync(dataCenter->getCurrentChatSessionId(), content);
+
+}
+// 针对自己发的消息处理，显示到消息展示区
+void MessageEditArea::addSelfMessage(model::MessageType messageType, const QByteArray &content, const QString &extraInfo)
+{
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    QString currentChatSessionId = dataCenter->getCurrentChatSessionId();
+    // 1. 构造消息并添加到dataCenter中
+    Message message = Message::makeMessage(messageType, currentChatSessionId, *dataCenter->getMyself(), content, extraInfo);
+    dataCenter->addMessage(message);
+
+    // 2. 把新消息添加到消息展示区
+    MainWidget* mainWidget = MainWidget::getInstance();
+    MessageShowArea* messageShowArea = mainWidget->getMessageShowArea();
+    messageShowArea->addMessage(false, message);
+
+    // 3. 控制消息滚动区域滚动到末尾
+    messageShowArea->scrollToEnd();
+
+    // 4. 发送一个信号，通知会话列表更新最后一条消息的内容
+    LOG() << "消息发送成功，内容为：" << content;
+    emit dataCenter->updateLastMessage(currentChatSessionId);
+}
+
+
+
+
+

@@ -398,8 +398,7 @@ void MainWidget::updateChatSessionList()
 
     for (const auto& c : *chatSessionList)
     {
-        // 根据消息类型判定显示最后一条消息的内容
-        LOG() << "    ";
+        // 根据消息类型判定显示最后一条消息的内容、
         // LOG() << "收到的会话列表中最后一条消息, chatSessionId=" << c._chatSessionId << "消息类型=" << c._lastMessage._messageType << " chatSessionName=" << c._chatSessionName << " 消息内容=" << c._lastMessage._content;
         QString showMsg;
         if (c._lastMessage._messageType == model::TEXT_TYPE) showMsg = c._lastMessage._content;
@@ -496,4 +495,9 @@ void MainWidget::switchSession(const QString& userId)
     // 4. 加载这个会话的历史消息
     // 由于已经置顶了，所以进入的话，就是点击第一个
     sessionFriendArea->clickItem(0);
+}
+
+MessageShowArea *MainWidget::getMessageShowArea()
+{
+    return messageShowArea;
 }

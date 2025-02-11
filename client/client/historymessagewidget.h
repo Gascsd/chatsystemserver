@@ -2,7 +2,7 @@
 
 #include <QDialog>
 #include <QGridLayout>
-#include "model/date.h"
+#include "model/data.h"
 
 using model::Message;
 

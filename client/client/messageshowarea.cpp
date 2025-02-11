@@ -118,6 +118,7 @@ MessageItem *MessageItem::makeMessageItem(bool isLeft, const Message &message)
     avatarBtn->setFixedSize(40, 40);
     avatarBtn->setIconSize(QSize(40, 40));
     avatarBtn->setIcon(message._sender._avatar);
+    avatarBtn->setStyleSheet("QPushButton { border: none }");
     if(isLeft)
     {
         layout->addWidget(avatarBtn, 0, 0, 2, 1, Qt::AlignTop | Qt::AlignLeft);

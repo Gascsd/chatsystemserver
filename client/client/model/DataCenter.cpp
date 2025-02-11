@@ -218,6 +218,11 @@ namespace model
         }
     }
 
+    void DataCenter::sendTextMessageAsync(const QString &chatSessionId, const QString &content)
+    {
+        netClient.setMessage(loginSessionId, chatSessionId, MessageType::TEXT_TYPE, content.toUtf8());
+    }
+
     ChatSessionInfo *DataCenter::findChatSessionById(const QString &chatSessionId)
     {
         if(chatSessionList == nullptr)
@@ -263,9 +268,16 @@ namespace model
         currentChatSessionId = chatSessionId;
     }
 
-    const QString &DataCenter::getCurrentChatSessionId(const QString &chatSessionId)
+    const QString &DataCenter::getCurrentChatSessionId()
     {
         return currentChatSessionId;
+    }
+
+    void DataCenter::addMessage(const Message &message)
+    {
+        QList<Message> messageList = (*recentMessages)[message._chatSessionId];
+        messageList.push_back(message);
+        LOG() << "把消息添加到dataCenter中，消息内容为:" << message._content;
     }
 
     void DataCenter::getRecentMessagesListAsync(const QString &chatSessionId)

@@ -3,7 +3,7 @@
 #include <QNetworkReply>
 #include <QUuid>
 #include "../utils.hpp"
-#include "../model/date.h"
+#include "../model/data.h"
 #include "../model/DataCenter.h"
 
 namespace network
@@ -221,6 +221,77 @@ namespace network
 
             // 发送信号通知调用逻辑，已经处理完毕响应
             emit dataCenter->getRecentMessageListDone(chatSessionId); // 这是在发起一个信号
+
+            LOG() << "[获取最近消息列表] 处理响应完毕 requestId=" << req.requestId();
+        });
+    }
+    // extraInfo可以传递扩展消息，尤其是文件消息的文件名
+    void NetClient::setMessage(const QString &loginSessionId, const QString chatSessionId, model::MessageType messageType,
+                               const QByteArray &content, const QString extraInfo)
+    {
+        zht_im::NewMessageReq req;
+        req.setRequestId(makeRequestId());
+        req.setSessionId(loginSessionId);
+        req.setChatSessionId(chatSessionId);
+
+        // 构造messageContent
+        zht_im::MessageContent messageContent;
+        if(messageType == model::TEXT_TYPE)
+        {
+            messageContent.setMessageType(zht_im::MessageTypeGadget::STRING);
+            zht_im::StringMessageInfo stringMessageInfo;
+            stringMessageInfo.setContent(content);
+            messageContent.setStringMessage(stringMessageInfo);
+        }
+        else if (messageType == model::IMAGE_TYPE)
+        {
+            messageContent.setMessageType(zht_im::MessageTypeGadget::IMAGE);
+            zht_im::ImageMessageInfo imageMessageInfo;
+            imageMessageInfo.setFileId(""); // 这个是由服务器生成的
+            imageMessageInfo.setImageContent(content);
+            messageContent.setImageMessage(imageMessageInfo);
+        }
+        else if (messageType == model::FILE_TYPE)
+        {
+            messageContent.setMessageType(zht_im::MessageTypeGadget::FILE);
+            zht_im::FileMessageInfo fileMessageInfo;
+            fileMessageInfo.setFileId(""); // 这个是由服务器生成的
+            fileMessageInfo.setFileSize(content.size());
+            fileMessageInfo.setFileName(extraInfo);
+            fileMessageInfo.setFileContents(content);
+            messageContent.setFileMessage(fileMessageInfo);
+        }
+        else if (messageType == model::SPEECH_TYPE)
+        {
+            messageContent.setMessageType(zht_im::MessageTypeGadget::SPEECH);
+            zht_im::SpeechMessageInfo speechMessageInfo;
+            speechMessageInfo.setFileId(""); // 这个是由服务器生成的
+            speechMessageInfo.setFileContents(content);
+            messageContent.setSpeechMessage(speechMessageInfo);
+        }
+        else
+        {
+            LOG() << "错误的消息类型，messageType=" << messageType;
+        }
+        req.setMessage(messageContent);
+        QByteArray body = req.serialize(&serializer);
+        LOG() << "[获取最近消息列表] 发送请求 requestId=" << req.requestId() << ", loginSessionId=" << loginSessionId <<
+            " chatSessionId=" << chatSessionId << " messageType=" << req.message().messageType();
+
+        QNetworkReply* httpResp = sendHttpRequest("/service/message_transmit/new_message", body);
+
+        connect(httpResp, &QNetworkReply::finished, this, [=]() {
+            bool ok = false;
+            QString reason = "";
+            auto resp = handleHttpResponse<zht_im::NewMessageRsp>(httpResp, &ok, &reason);
+            if (!ok)
+            {
+                LOG() << "[获取最近消息列表] 出错, requestId=" << req.requestId() << ", reason = " << reason;
+                return;
+            }
+
+            // 发送信号通知调用逻辑，已经处理完毕响应
+            emit dataCenter->sendMessageDone(messageType, content, extraInfo); // 这是在发起一个信号
 
             LOG() << "[获取最近消息列表] 处理响应完毕 requestId=" << req.requestId();
         });

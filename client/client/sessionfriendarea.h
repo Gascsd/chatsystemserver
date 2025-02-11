@@ -83,6 +83,8 @@ public:
     SessionItem(QWidget* owner, const QString& chatSessionId, const QIcon& avatar, const QString& name, const QString& lastMessage);
     void active() override;
 
+    void updateLastMessage(const QString& chatSessionId);
+
 private:
     QString chatSessionId; // 当前会话ID
 };

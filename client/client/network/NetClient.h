@@ -7,12 +7,11 @@
 #include <QProtobufSerializer>
 #include <QNetworkReply>
 
-// #include "../model/DataCenter.h"
+#include "../model/data.h"
 
 // 此处为了避免 "循环包含" 问题, 就需要使用 前置声明 代替包含头文件
 namespace model {
 class DataCenter;
-
 }  // end model
 
 namespace network {
@@ -74,7 +73,9 @@ public:
     void getChatSessionList(const QString& loginSessionId);
     void getApplyList(const QString& loginSessionId);
     void getRecentMessagesList(const QString& loginSessionId, const QString& chatSessionId);
-    
+    void setMessage(const QString &loginSessionId, const QString chatSessionId, model::MessageType messageType,
+                               const QByteArray &content, const QString extraInfo = "");
+
 private:
     model::DataCenter* dataCenter;
 
