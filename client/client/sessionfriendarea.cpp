@@ -229,7 +229,6 @@ SessionItem::SessionItem(QWidget *owner, const QString &chatSessionId, const QIc
     // 处理更新最后一条消息的信号
     model::DataCenter* dataCenter = model::DataCenter::getInstance();
     connect(dataCenter, &model::DataCenter::updateLastMessage, this, &SessionItem::updateLastMessage);
-
 }
 
 void SessionItem::active()

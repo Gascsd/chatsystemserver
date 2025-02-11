@@ -275,7 +275,7 @@ namespace model
 
     void DataCenter::addMessage(const Message &message)
     {
-        QList<Message> messageList = (*recentMessages)[message._chatSessionId];
+        QList<Message>& messageList = (*recentMessages)[message._chatSessionId];
         messageList.push_back(message);
         LOG() << "把消息添加到dataCenter中，消息内容为:" << message._content;
     }
