@@ -17,6 +17,7 @@
 #include "speech.qpb.h"
 #include "message.qpb.h"
 #include "transmite.qpb.h"
+#include "notify.qpb.h"
 
 #include "../utils.hpp"
 

@@ -6,14 +6,33 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QWidget>
+#include <QGridLayout>
+
 
 class SelfInfoWidget : public QDialog
 {
     Q_OBJECT
 public:
     SelfInfoWidget(QWidget* parent);
+    void initSingalISlot();
+
+    void clickNameSubmitBtn();
+    void clickNameSubmitBtnDone();
+
+    void clickDescSubmitBtn();
+    void clickDescSubmitBtnDone();
+
+    void clickGetVerifyCodeBtn();
+    void clickPhoneSubmitBtn();
+    void clickPhoneSubmitBtnDone();
+
+    void clickAvatarBtn();
+    void clickAvatarBtnDone();
 
 private:
+    QGridLayout* layout;
+    int leftTime = 30;
+
     QPushButton* avatarBtn;
     QLabel* idTag;                      // 显示"序号"
     QLabel* idLabel;                    // 显示"1234"
@@ -39,6 +58,8 @@ private:
     QLabel* verifyCodeTag;               // 显示"验证码"
     QLineEdit* verifyCodeEdit;           // 输入验证码
     QPushButton* getVerifyCodeBtn;       // 获取验证码
+
+    QString phoneToChange;               // 要修改的新手机号
 };
 
 #endif // SELFINFOWIDGET_H

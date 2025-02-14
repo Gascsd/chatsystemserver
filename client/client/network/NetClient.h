@@ -27,14 +27,19 @@ private:
 public:
     NetClient(model::DataCenter* dataCenter);
 
-    // 验证网络联通
-    void ping();
+    static QString makeRequestId(); // 生成请求Id
+
+    void ping(); // 验证网络联通
 
     void initWebsocket();
 
     void sendAuth(); // 发送身份认证请求
 
-    static QString makeRequestId(); // 生成请求Id
+    void handleWsResponse(const zht_im::NotifyMessage& notyfyMessage);
+    void handleWsMessage(const model::Message& message);
+    void handleWsRemoveFriend(const QString& userId);
+    void handleWsAddFriendApply(const model::UserInfo& userInfo);
+    void handleWsAddFriendProcess(const model::UserInfo& userInfo, bool agree);
 
     QNetworkReply* sendHttpRequest(const QString& apiPath, const QByteArray& body); // 封装发送请求的逻辑
 
@@ -72,9 +77,21 @@ public:
     void getFriendList(const QString& loginSessionId);
     void getChatSessionList(const QString& loginSessionId);
     void getApplyList(const QString& loginSessionId);
-    void getRecentMessagesList(const QString& loginSessionId, const QString& chatSessionId);
+    void getRecentMessagesList(const QString& loginSessionId, const QString& chatSessionId, bool updateUI);
     void setMessage(const QString &loginSessionId, const QString chatSessionId, model::MessageType messageType,
                                const QByteArray &content, const QString extraInfo = "");
+
+    void receiverMessage(const QString& chatSessionId);
+
+    void changeNickname(const QString& loginSessionId, const QString& nickname);
+    void changeDescription(const QString& loginSessionId, const QString& description);
+    void getVerifyCode(const QString& phone);
+    void changePhone(const QString& loginSessionId, const QString& phone, const QString& verifyCodeId, const QString& verifyCode);
+    void changeAvatar(const QString& loginSessionId, const QByteArray& imageBytes);
+    void deleteFriend(const QString& loginSessionId, const QString& userId);
+    void addFriendApply(const QString& loginSessionId, const QString& userId);
+    void acceptFriendApply(const QString& loginSessionId, const QString& userId);
+    void rejectFriendApply(const QString& loginSessionId, const QString& userId);
 
 private:
     model::DataCenter* dataCenter;

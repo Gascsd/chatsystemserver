@@ -87,6 +87,7 @@ public:
 
 private:
     QString chatSessionId; // 当前会话ID
+    QString text; // 最后一条消息的文本预览
 };
 
 /**
@@ -112,6 +113,8 @@ class ApplyItem : public SessionFriendItem
 public:
     ApplyItem(QWidget* owner, const QString& userId, const QIcon& avatar, const QString& name);
     void active() override;
+    void acceptFriendApply();
+    void rejectFriendApply();
 
 private:
     QString userId; // 申请人用户ID

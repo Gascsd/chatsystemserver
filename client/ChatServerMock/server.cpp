@@ -939,7 +939,7 @@ bool WebsocketServer::init()
                 return;
             }
             // 构造响应数据
-            QByteArray avatar = loadFileToByteArray(":/resouce/image/defaultAvatar.png");
+            QByteArray avatar = loadFileToByteArray(":/resource/image/defaultAvatar.png");
             zht_im::MessageInfo messageInfo = makeTextMessageInfo(this->messageIndex++, "2000", avatar);
 
             zht_im::NotifyNewMessage notifyNewMessage;

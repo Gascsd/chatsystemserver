@@ -1,6 +1,8 @@
 #include "userinfowidget.h"
-
+#include "model/DataCenter.h"
+#include "mainwidget.h"
 #include <QGridLayout>
+#include <QMessagebox>
 
 UserInfoWidget::UserInfoWidget(QWidget *parent, const UserInfo &userInfo)
     : userInfo(userInfo), QDialog(parent)
@@ -100,5 +102,59 @@ UserInfoWidget::UserInfoWidget(QWidget *parent, const UserInfo &userInfo)
     layout->addWidget(applyBtn, 3, 0);
     layout->addWidget(sendMessageBtn, 3, 1);
     layout->addWidget(deleteFriendBtn, 3, 2);
+
+    // 9. 设置按钮的禁用关系
+    // ---判定依据就是拿着当前好友的userId，在 DataCenter 的好友列表中查询
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    UserInfo* myFriend = dataCenter->findFriendById(this->userInfo._userId);
+    if (myFriend == nullptr)
+    {
+        sendMessageBtn->setEnabled(false);
+        deleteFriendBtn->setEnabled(false);
+    }
+    else
+    {
+        applyBtn->setEnabled(false);
+    }
+    // 10. 初始化信号槽
+    initSignalSlot();
+}
+
+void UserInfoWidget::initSignalSlot()
+{
+    connect(sendMessageBtn, &QPushButton::clicked, this, [=]() {
+        MainWidget* mainWidget = MainWidget::getInstance();
+        mainWidget->switchSession(userInfo._userId);
+
+        this->close();
+        });
+    connect(deleteFriendBtn, &QPushButton::clicked, this, &UserInfoWidget::clickDeleteFriendBtn);
+    connect(applyBtn, &QPushButton::clicked, this, &UserInfoWidget::clickApplyBtn);
+}
+
+void UserInfoWidget::clickDeleteFriendBtn()
+{
+    auto result = QMessageBox::warning(this, "确认删除", "确认删除当前好友?", QMessageBox::Ok | QMessageBox::Cancel);
+    if (result != QMessageBox::Ok)
+    {
+        LOG() << "删除好友取消";
+        return;
+    }
+    // 2. 发送网络请求
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    // 由于此处的信号处理，都是在主窗口进行的，所有在主窗口捕捉结束信号
+    dataCenter->deleteFriendAsync(userInfo._userId);
+
+    // 3. 关闭窗口
+    this->close();
+}
+
+void UserInfoWidget::clickApplyBtn()
+{
+    // 1. 发送好友申请
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    dataCenter->addFriendApplyAsync(userInfo._userId);
+    // 2. 关闭窗口
+    this->close();
 }
 

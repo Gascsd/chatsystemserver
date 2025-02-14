@@ -107,6 +107,23 @@ namespace model
 		file.close();
 	}
 
+	void DataCenter::clearUnread(const QString& chatSessionId)
+	{
+		(*unreadMessageCount)[chatSessionId] = 0;
+		saveDataFile(); // 防止程序崩溃出问题
+	}
+
+	void DataCenter::addUnread(const QString& chatSessionId)
+	{
+		(*unreadMessageCount)[chatSessionId]++;
+		saveDataFile(); // 防止程序崩溃出问题
+	}
+
+	int DataCenter::getUnread(const QString& chatSessionId)
+	{
+		return (*unreadMessageCount)[chatSessionId];
+	}
+
 	void DataCenter::getMyselfAsync()
 	{
 		LOG() << "dataCenter 调用获取个人信息接口";
@@ -194,7 +211,7 @@ namespace model
         }
     }
 
-    QList<Message> *DataCenter::getRecentMessages(const QString &chatSessionId)
+    QList<Message> *DataCenter::getRecentMessagesList(const QString &chatSessionId)
     {
         if (!recentMessages->contains(chatSessionId))
         {
@@ -222,6 +239,137 @@ namespace model
     {
         netClient.setMessage(loginSessionId, chatSessionId, MessageType::TEXT_TYPE, content.toUtf8());
     }
+
+	void DataCenter::changeNicknameAsync(const QString& nickname)
+	{
+		netClient.changeNickname(loginSessionId, nickname);
+	}
+
+	void DataCenter::changeDescriptionAsync(const QString& description)
+	{
+		netClient.changeDescription(loginSessionId, description);
+	}
+
+	void DataCenter::resetDescription(const QString& description)
+	{
+		if (myself == nullptr)
+		{
+			return;
+		}
+		myself->_description = description;
+	}
+
+	void DataCenter::getVerifyCodeAsync(const QString& phone)
+	{
+		netClient.getVerifyCode(phone);
+	}
+
+	void DataCenter::resetVerifyCodeId(const QString& verifyCodeId)
+	{
+		currentVerifyCodeId = verifyCodeId;
+	}
+
+	const QString& DataCenter::getVerifyCodeId()
+	{
+		return currentVerifyCodeId;
+	}
+
+	void DataCenter::changePhoneAsync(const QString& phone, const QString& verifyCodeId, const QString& verifyCode)
+	{
+		netClient.changePhone(loginSessionId, phone, verifyCodeId, verifyCode);
+	}
+
+	void DataCenter::resetPhone(const QString& phone)
+	{
+		if (myself == nullptr)
+		{
+			return;
+		}
+		myself->_phone = phone;
+	}
+
+	void DataCenter::changeAvatarAsync(const QByteArray& imageBytes)
+	{
+		netClient.changeAvatar(loginSessionId, imageBytes);
+	}
+
+	void DataCenter::resetAvatar(const QByteArray& avatar)
+	{
+		if (myself == nullptr)
+		{
+			return;
+		}
+		myself->_avatar = makeIcon(avatar);
+	}
+
+	void DataCenter::deleteFriendAsync(const QString& userId)
+	{
+		netClient.deleteFriend(loginSessionId, userId);
+	}
+
+	void DataCenter::removeFriend(const QString& userId)
+	{
+		if (friendList == nullptr || chatSessionList == nullptr) return;
+		friendList->removeIf([=](const UserInfo& userInfo) {
+			return userInfo._userId == userId;
+			});
+		// 还要考虑会话列表
+		chatSessionList->removeIf([=](const ChatSessionInfo& chatSessionInfo) {
+			if (chatSessionInfo._userId == "") // 群聊不受影响
+				return false;
+			if (chatSessionInfo._userId == userId)
+			{
+				// 此处如果删除的会话正好是用户当前选中的会话，此时就需要把当前选中的会话内容(标题和消息列表)都清空
+				if (chatSessionInfo._chatSessionId == this->getCurrentChatSessionId())
+				{
+					emit this->clearCurrentSession();
+				}
+				return true;
+			}
+
+			return false;
+			});
+	}
+
+	void DataCenter::addFriendApplyAsync(const QString& userId)
+	{
+		netClient.addFriendApply(loginSessionId, userId);
+	}
+
+	void DataCenter::acceptFriendApplyAsync(const QString& userId)
+	{
+		netClient.acceptFriendApply(loginSessionId, userId);
+	}
+
+	UserInfo DataCenter::removeFriendApplyList(const QString& userId)
+	{
+		if (applyList == nullptr)
+			return UserInfo();
+		for (auto it = applyList->begin(); it != applyList->end(); ++it)
+		{
+			if (it->_userId == userId)
+			{
+				UserInfo toDelete = *it;
+				applyList->erase(it);
+				return toDelete;
+			}
+		}
+		return UserInfo();
+	}
+
+	void DataCenter::rejectFriendApplyAsync(const QString& userId)
+	{
+		netClient.rejectFriendApply(loginSessionId, userId);
+	}
+
+	void DataCenter::resetNickname(const QString& nickname)
+	{
+		if (myself == nullptr)
+		{
+			return;
+		}
+		myself->_nickname = nickname;
+	}
 
     ChatSessionInfo *DataCenter::findChatSessionById(const QString &chatSessionId)
     {
@@ -280,9 +428,19 @@ namespace model
         LOG() << "把消息添加到dataCenter中，消息内容为:" << message._content;
     }
 
-    void DataCenter::getRecentMessagesListAsync(const QString &chatSessionId)
+	UserInfo* DataCenter::findFriendById(const QString& userId)
+	{
+		if (this->friendList == nullptr) return nullptr;
+		for (auto& f : *friendList)
+		{
+			if (f._userId == userId) return &f;
+		}
+		return nullptr;
+	}
+
+    void DataCenter::getRecentMessagesListAsync(const QString &chatSessionId, bool updateUI)
     {
-        netClient.getRecentMessagesList(loginSessionId, chatSessionId);
+        netClient.getRecentMessagesList(loginSessionId, chatSessionId, updateUI);
     }
 
 	DataCenter::DataCenter()  : netClient(this)

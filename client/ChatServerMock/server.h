@@ -53,7 +53,7 @@ static inline QByteArray loadFileToByteArray(const QString& path) {
     QFile file(path);
     bool ok = file.open(QFile::ReadOnly);
     if (!ok) {
-        LOG() << "文件打开失败!";
+        LOG() << "文件打开失败!" << file.errorString();
         return QByteArray();
     }
     QByteArray content = file.readAll();

@@ -224,11 +224,19 @@ void SessionFriendItem::active()
 }
 
 SessionItem::SessionItem(QWidget *owner, const QString &chatSessionId, const QIcon &avatar, const QString &name, const QString &lastMessage)
-    : SessionFriendItem(owner, avatar, name, lastMessage), chatSessionId(chatSessionId)
+    : SessionFriendItem(owner, avatar, name, lastMessage), chatSessionId(chatSessionId), text(lastMessage)
 {
     // 处理更新最后一条消息的信号
     model::DataCenter* dataCenter = model::DataCenter::getInstance();
     connect(dataCenter, &model::DataCenter::updateLastMessage, this, &SessionItem::updateLastMessage);
+
+    // 需要显示未读消息的数目，为了支持客户端重启之后，未读消息仍然能够正确显示
+    int unread = dataCenter->getUnread(chatSessionId);
+    if (unread > 0)
+    {
+        // 存在未读消息
+        this->messageLabel->setText(QString("[未读%1条]").arg(unread) + text);
+    }
 }
 
 void SessionItem::active()
@@ -239,6 +247,11 @@ void SessionItem::active()
     // 记载历史会话内容需要涉及到：当前内存中数据的操作、网络通信、界面的变更，所以用主界面来操作
     MainWidget*  mainWidget = MainWidget::getInstance();
     mainWidget->loadRecentMessage(chatSessionId);
+
+    // 清空未读消息的数目
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    dataCenter->clearUnread(chatSessionId);
+    this->messageLabel->setText(text);
 }
 
 void SessionItem::updateLastMessage(const QString &chatSessionId)
@@ -247,14 +260,13 @@ void SessionItem::updateLastMessage(const QString &chatSessionId)
     if(this->chatSessionId != chatSessionId) // 如果当前SessionItem不是正在发送消息的，就直接return
         return;
     // chatSessionId匹配才更新最后一条消息
-    auto messageList = dataCenter->getRecentMessages(chatSessionId);
+    auto messageList = dataCenter->getRecentMessagesList(chatSessionId);
     if(messageList == nullptr || messageList->size() == 0) // 当前会话没有消息
         return;
 
     const Message& lastMessage = messageList->back();
     LOG() << "messageList中存放的最后一条消息为：" << lastMessage._content;
     // 明确文本显示的内容
-    QString text;
     if(lastMessage._messageType == model::TEXT_TYPE)
         text = lastMessage._content;
     else if (lastMessage._messageType == model::IMAGE_TYPE)
@@ -270,8 +282,16 @@ void SessionItem::updateLastMessage(const QString &chatSessionId)
     }
 
     // 显示内容到界面上
-    // 这里之后还需要考虑接收到的未读消息，之后再处理
-    this->messageLabel->setText(text);
+    // 添加未读消息的数目
+    // 先判断当前会话是否是正在选中的会话，如果是，就跟更新未读消息， 如果不是，就更新
+    if (chatSessionId == dataCenter->getCurrentChatSessionId())
+        this->messageLabel->setText(text);
+    else
+    {
+        int unread = dataCenter->getUnread(chatSessionId);
+        if(unread > 0)
+        this->messageLabel->setText(QString("[未读%1条]").arg(unread) + text);
+    }
 }
 
 FriendItem::FriendItem(QWidget *owner, const QString &userId, const QIcon &avatar, const QString &name, const QString &description)
@@ -305,12 +325,29 @@ ApplyItem::ApplyItem(QWidget *owner, const QString &userId, const QIcon &avatar,
     // 3. 添加到布局管理器中
     layout->addWidget(acceptBtn, 1,2,1,1);
     layout->addWidget(rejectBtn, 1,3,1,1);
+
+    // 4. 添加信号槽
+    connect(acceptBtn, &QPushButton::clicked, this, &ApplyItem::acceptFriendApply);
+    connect(rejectBtn, &QPushButton::clicked, this, &ApplyItem::rejectFriendApply);
 }
 
 void ApplyItem::active()
 {
     // 本身就不需要实现
     LOG() << "点击 ApplyItem 触发的逻辑, userId=" << userId;
+}
+
+void ApplyItem::acceptFriendApply()
+{
+    // 发送网络请求
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    dataCenter->acceptFriendApplyAsync(this->userId);
+}
+
+void ApplyItem::rejectFriendApply()
+{
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    dataCenter->rejectFriendApplyAsync(this->userId);
 }
 
 

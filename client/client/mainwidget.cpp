@@ -11,6 +11,7 @@
 #include "addfrienddialog.h"
 
 #include "debug.h"
+#include "Toast.h"
 #include "model/DataCenter.h"
 
 MainWidget* MainWidget::instance = nullptr;
@@ -273,6 +274,67 @@ void MainWidget::initSignalSlot()
         });
     dataCenter->getMyselfAsync();
 
+    // 处理修改头像
+    connect(dataCenter, &model::DataCenter::changeAvatarDone, this, [=]() {
+        UserInfo* myself = dataCenter->getMyself();
+        userAvatar->setIcon(myself->_avatar);
+        });
+
+    // 处理删除好友
+    connect(dataCenter, &model::DataCenter::deleteFriendDone, this, [=]() {
+        // 更新会话列表和好友列表
+        this->updateFriendList();
+        this->updateChatSessionList();
+        LOG() << "删除好友完毕";
+        });
+
+    // 如果删除的会话是当前选中会话的话
+    connect(dataCenter, &model::DataCenter::clearCurrentSession, this, [=]() {
+        sessionTitleLabel->setText("");
+        messageShowArea->clear();
+        dataCenter->setCurrentChatSessionId("");
+        LOG() << "清空当前会话完成";
+        });
+
+    // 处理添加好友申请
+    connect(dataCenter, &model::DataCenter::addFriendApplyDone, this, [=]() {
+        Toast::showMessage("好友申请已发送");
+        });
+
+    // 处理添加好友申请的推送
+    connect(dataCenter, &model::DataCenter::receiveFriendApplyDone, this, [=]() {
+        this->updateApplyList();
+        Toast::showMessage("收到新的好友申请");
+        });
+
+    // 处理同意好友的界面更新
+    connect(dataCenter, &model::DataCenter::acceptFriendApplyDone, this, [=]() {
+        this->updateApplyList();
+        this->updateFriendList();
+        Toast::showMessage("好友已经添加完成");
+        });
+
+    // 处理拒绝好友的界面更新
+    connect(dataCenter, &model::DataCenter::rejectFriendApplyDone, this, [=]() {
+        this->updateApplyList();
+        Toast::showMessage("好友申请已经拒绝");
+        });
+
+    // 处理好友申请结果的推送数据
+    connect(dataCenter, &model::DataCenter::receiveFriendProcessDone, this, [=](const QString& nickname, bool agree) {
+        if (agree)
+        {
+            this->updateFriendList();
+            Toast::showMessage(nickname + "已经同意了你的好友申请");
+        }
+        else
+        {
+            Toast::showMessage(nickname + "已经拒绝了你的好友申请");
+        }
+        });
+
+
+
     // 在客户端初始化的时候就获取好友列表、会话列表、申请列表
     loadFriendList();
     loadSessionList();
@@ -432,21 +494,21 @@ void MainWidget::loadRecentMessage(const QString &chatSessionId)
 {
     // 先判断本地内存中是否存在数据，如果有就直接加载，如果没有的话就就从网络中获取
     model::DataCenter* dataCenter = model::DataCenter::getInstance();
-    if (dataCenter->getRecentMessages(chatSessionId) != nullptr)
+    if (dataCenter->getRecentMessagesList(chatSessionId) != nullptr)
     {
         updateRecentMessage(chatSessionId);
     }
     else
     {
         connect(dataCenter, &model::DataCenter::getRecentMessageListDone, this, &MainWidget::updateRecentMessage, Qt::UniqueConnection);
-        dataCenter->getRecentMessagesListAsync(chatSessionId);
+        dataCenter->getRecentMessagesListAsync(chatSessionId, true);
     }
 }
 
 void MainWidget::updateRecentMessage(const QString &chatSessionId)
 {
     model::DataCenter* dataCenter = model::DataCenter::getInstance();
-    auto recentMessage = dataCenter->getRecentMessages(chatSessionId);
+    auto recentMessage = dataCenter->getRecentMessagesList(chatSessionId);
     messageShowArea->clear();
     // 由于用户首先看到的是最近的消息，所以我们选择先加载最近消息
     for(int i =  recentMessage->size() - 1; i >= 0; --i)

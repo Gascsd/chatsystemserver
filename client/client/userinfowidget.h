@@ -14,7 +14,9 @@ class UserInfoWidget : public QDialog
     Q_OBJECT
 public:
     UserInfoWidget(QWidget* parent, const UserInfo& userInfo);
-
+    void initSignalSlot();
+    void clickDeleteFriendBtn();
+    void clickApplyBtn();
 
 private:
     const UserInfo& userInfo; // 保存对应的 user 对象

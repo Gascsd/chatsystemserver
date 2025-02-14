@@ -7,13 +7,14 @@
 Toast::Toast(const QString& text)
 {
 	// 1. 设置窗口基本属性
-	this->setFixedSize(500, 100);
+	this->setFixedSize(700, 100);
 	this->setWindowTitle("消息通知");
 	this->setWindowIcon(QIcon(":/resource/image/logo.png"));
 	this->setStyleSheet("QWidget { background-color: rgb(220, 220, 220); border-radius: 10px; }");
 	this->setAttribute(Qt::WA_DeleteOnClose);
 	// 去掉窗口的标题栏
 	this->setWindowFlag(Qt::FramelessWindowHint);
+	this->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint); // 添加此行以保持窗口始终在顶部
 
 	// 2. 移动位置
 	QScreen* screen = QApplication::primaryScreen();

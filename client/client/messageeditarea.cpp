@@ -90,6 +90,7 @@ void MessageEditArea::initSignalSlot()
     // 2. 关联发送文本消息
     connect(sendTextBtn, &QPushButton::clicked, this, &MessageEditArea::SendTextMessage);
     connect(dataCenter, &model::DataCenter::sendMessageDone, this, &MessageEditArea::addSelfMessage);
+    connect(dataCenter, &model::DataCenter::receiveMessageDone, this, &MessageEditArea::addOtherMessage);
 }
 
 void MessageEditArea::SendTextMessage()
@@ -132,8 +133,18 @@ void MessageEditArea::addSelfMessage(model::MessageType messageType, const QByte
     messageShowArea->scrollToEnd();
 
     // 4. 发送一个信号，通知会话列表更新最后一条消息的内容
-    LOG() << "消息发送成功，内容为：" << content;
+    // LOG() << "消息发送成功，内容为：" << content;
     emit dataCenter->updateLastMessage(currentChatSessionId);
+}
+
+void MessageEditArea::addOtherMessage(const model::Message& message)
+{
+    //1. 通过界面，拿到消息展示区
+    MainWidget* mainWidget = MainWidget::getInstance();
+    MessageShowArea* messageShowArea = mainWidget->getMessageShowArea();
+    messageShowArea->addMessage(true, message);
+    messageShowArea->scrollToEnd();
+    Toast::showMessage("收到消息");
 }
 
 

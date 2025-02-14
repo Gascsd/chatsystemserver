@@ -11,6 +11,7 @@
 #include "utils.hpp"
 #include "userinfowidget.h"
 #include "mainwidget.h"
+#include "model/DataCenter.h"
 
 using namespace model;
 
@@ -178,6 +179,19 @@ MessageItem *MessageItem::makeMessageItem(bool isLeft, const Message &message)
         userInfoWidget->exec();
     });
 
+    // 6. 当用户修改了昵称之后，需要同步修改此处的昵称
+    if (!isLeft) // 只针对自己的消息做下列操作
+    {
+        DataCenter* dataCenter = DataCenter::getInstance();
+        connect(dataCenter, &DataCenter::changeNicknameDone, messageItem, [=]() {
+            nameLabel->setText(dataCenter->getMyself()->_nickname + " | " + message._time);
+            });
+
+        connect(dataCenter, &model::DataCenter::changeAvatarDone, messageItem, [=]() {
+            UserInfo* myself = dataCenter->getMyself();
+            avatarBtn->setIcon(myself->_avatar);
+            });
+    }
     return messageItem;
 }
 
