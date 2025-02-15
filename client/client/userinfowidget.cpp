@@ -1,6 +1,7 @@
 #include "userinfowidget.h"
 #include "model/DataCenter.h"
 #include "mainwidget.h"
+#include "sessiondetailwidget.h"
 #include <QGridLayout>
 #include <QMessagebox>
 
@@ -125,8 +126,19 @@ void UserInfoWidget::initSignalSlot()
     connect(sendMessageBtn, &QPushButton::clicked, this, [=]() {
         MainWidget* mainWidget = MainWidget::getInstance();
         mainWidget->switchSession(userInfo._userId);
-
-        this->close();
+        if (this->parent() == MainWidget::getInstance())
+        {
+            // 如果是从消息展示区点击弹出的用户详情窗口，就只关闭本窗口
+            this->close();
+        }
+        else
+        {
+            // 如果是从会话详情中点击的，就需要同时关闭会话详情窗口
+            LOG() << "从会话详情中点击的";
+            this->close();
+            auto parent = dynamic_cast<SessionDetailWidget*>(this->parent());
+            parent->close();
+        }
         });
     connect(deleteFriendBtn, &QPushButton::clicked, this, &UserInfoWidget::clickDeleteFriendBtn);
     connect(applyBtn, &QPushButton::clicked, this, &UserInfoWidget::clickApplyBtn);

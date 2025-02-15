@@ -12,14 +12,16 @@ class AvatarItem : public QWidget
 {
     Q_OBJECT
 public:
-    AvatarItem(const QIcon& avatar, const QString& name);
+    AvatarItem(const QIcon& avatar, const QString& name, const QString& userId);
     QPushButton* getAvatar()
     {
         return avatarBtn;
     }
+    void clickUserItem();
 private:
     QPushButton* avatarBtn;
     QLabel* nameLabel;
+    QString userId;
 };
 
 // 表示 单聊会话详情 窗口

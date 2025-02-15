@@ -10,6 +10,7 @@
 #include <QPainter>
 
 #include "model/DataCenter.h"
+#include "mainwidget.h"
 #include "utils.hpp"
 #include "debug.h"
 

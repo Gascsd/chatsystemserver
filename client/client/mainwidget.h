@@ -65,11 +65,12 @@ private:
     void loadFriendList();
     void loadApplyList();
 
+public:
+
     void updateFriendList();
     void updateChatSessionList();
     void updateApplyList();
 
-public:
     void loadRecentMessage(const QString& chatSessionId);
     void updateRecentMessage(const QString& chatSessionId);
     void switchSession(const QString& userId); // 点击好友项之后切换到指定会话

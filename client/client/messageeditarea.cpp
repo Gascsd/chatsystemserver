@@ -114,6 +114,28 @@ void MessageEditArea::SendTextMessage()
     // 3. 通过网络发送消息
     dataCenter->sendTextMessageAsync(dataCenter->getCurrentChatSessionId(), content);
 
+
+    // 把该会话调整到会话列表最顶上
+    MainWidget* mainWidget = MainWidget::getInstance();
+    auto chatSessionList = dataCenter->getChatSessionList();
+    if (chatSessionList == nullptr)
+    {
+        LOG() << "客户端还未加载会话列表";
+        return;
+    }
+    for (auto it = chatSessionList->begin(); it != chatSessionList->end(); ++it)
+    {
+        if (it->_chatSessionId == dataCenter->getCurrentChatSessionId())
+        {
+            auto backup = *it;
+            chatSessionList->erase(it);
+            chatSessionList->push_front(backup);
+            break;
+        }
+    }
+    mainWidget->updateChatSessionList();
+    LOG() << "已经调整到最顶部会话";
+
 }
 // 针对自己发的消息处理，显示到消息展示区
 void MessageEditArea::addSelfMessage(model::MessageType messageType, const QByteArray &content, const QString &extraInfo)
