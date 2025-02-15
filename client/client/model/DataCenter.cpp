@@ -362,6 +362,35 @@ namespace model
 		netClient.rejectFriendApply(loginSessionId, userId);
 	}
 
+	void DataCenter::createGroupChatSessionAsync(const QList<QString>& userIdList)
+	{
+		netClient.createGroupChatSession(loginSessionId, userIdList);
+	}
+
+	void DataCenter::getMemberListAsync(const QString& chatSessionId)
+	{
+		netClient.getMemberList(loginSessionId, chatSessionId);
+	}
+
+	QList<UserInfo>* DataCenter::getMemberList(const QString& chatSessionId)
+	{
+		if (!this->memberList->contains(chatSessionId))
+			return nullptr;
+		return &(*this->memberList)[chatSessionId];
+	}
+
+	void DataCenter::resetMemberList(const QString& chatSessionId, const QList<zht_im::UserInfo>& memberList)
+	{
+		auto& currentMemberList = (*this->memberList)[chatSessionId];
+		currentMemberList.clear();
+		for (const auto& m : memberList)
+		{
+			UserInfo userInfo;
+			userInfo.load(m);
+			currentMemberList.push_back(userInfo);
+		}
+	}
+
 	void DataCenter::resetNickname(const QString& nickname)
 	{
 		if (myself == nullptr)

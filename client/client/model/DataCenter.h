@@ -105,6 +105,14 @@ namespace model
 		// 拒绝好友申请
 		void rejectFriendApplyAsync(const QString& userId);
 
+		// 创建群聊
+		void createGroupChatSessionAsync(const QList<QString>& userIdList);
+
+		// 获取会话的成员列表
+		void getMemberListAsync(const QString& chatSessionId);
+		QList<UserInfo>* getMemberList(const QString& chatSessionId);
+		void resetMemberList(const QString& chatSessionId, const QList<zht_im::UserInfo>& memberList);
+
         //   ---------------辅助函数------------
         
 		ChatSessionInfo* findChatSessionById(const QString& chatSessionId);	// 根据会话ID查询会话信息
@@ -138,5 +146,8 @@ namespace model
 		void acceptFriendApplyDone();
 		void rejectFriendApplyDone();
 		void receiveFriendProcessDone(const QString& nickname, bool agree);
+		void createGroupChatSessionDone();
+		void receiveSessionCreateDone();
+		void getMemberListDone(const QString& chatSessionId);
 	};  
 } // namespace model

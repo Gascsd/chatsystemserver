@@ -229,14 +229,29 @@ void MainWidget::initSignalSlot()
     // 点击会话详情按钮，弹出会话详情窗口
     connect(extraBtn, &QPushButton::clicked, this, [=]() {
         // 判断是单聊还是群聊
-#if TEST_GROUP_SESSION_DETAIL
-        bool isSingleChat = false; // 这个值根据当前选中的实际会话确定，后面接入服务器再确定
-#else
-        bool isSingleChat = true;
-#endif
+//#if TEST_GROUP_SESSION_DETAIL
+//        bool isSingleChat = false; // 这个值根据当前选中的实际会话确定，后面接入服务器再确定
+//#else
+//        bool isSingleChat = true;
+//#endif
+
+        model::ChatSessionInfo* chatSessionInfo = dataCenter->findChatSessionById(dataCenter->getCurrentChatSessionId());
+        if (chatSessionInfo == nullptr)
+        {
+            LOG() << "当前会话不存在，无法弹出会话详情对话框";
+            return;
+        }
+
+        bool  isSingleChat = chatSessionInfo->_userId != "";
         if (isSingleChat) // 单聊
         {
-            SessionDetailWidget* sessionDetailWidget = new SessionDetailWidget(this);
+            model::UserInfo* userInfo = dataCenter->findFriendById(chatSessionInfo->_userId);
+            if (userInfo == nullptr)
+            {
+                LOG() << "单聊会话对应的用户不存在，无法弹出会话详情窗口";
+                return;
+            }
+            SessionDetailWidget* sessionDetailWidget = new SessionDetailWidget(this, *userInfo);
             sessionDetailWidget->exec();
         }
         else // 群聊
@@ -333,7 +348,16 @@ void MainWidget::initSignalSlot()
         }
         });
 
+    // 处理创建群聊的响应信号
+    connect(dataCenter, &model::DataCenter::createGroupChatSessionDone, this, [=]() {
+        Toast::showMessage("创建群聊请求已发送");
+        });
 
+    // 处理收到创建会话的推送数据
+    connect(dataCenter, &model::DataCenter::receiveSessionCreateDone, this, [=]() {
+        this->updateChatSessionList();
+        Toast::showMessage("您已经被拉入新的群聊中");
+        });
 
     // 在客户端初始化的时候就获取好友列表、会话列表、申请列表
     loadFriendList();
@@ -557,6 +581,11 @@ void MainWidget::switchSession(const QString& userId)
     // 4. 加载这个会话的历史消息
     // 由于已经置顶了，所以进入的话，就是点击第一个
     sessionFriendArea->clickItem(0);
+}
+
+QLabel* MainWidget::getSessionTitleLabel()
+{
+    return sessionTitleLabel;
 }
 
 MessageShowArea *MainWidget::getMessageShowArea()

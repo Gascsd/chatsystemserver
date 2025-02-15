@@ -5,6 +5,8 @@
 
 #include "sessiondetailwidget.h"
 #include "debug.h"
+#include "model//DataCenter.h"
+#include "mainwidget.h"
 
 GroupSessionDetailWidget::GroupSessionDetailWidget(QWidget *parent)
 	: QDialog(parent)
@@ -67,7 +69,7 @@ GroupSessionDetailWidget::GroupSessionDetailWidget(QWidget *parent)
 	hlayout->setContentsMargins(0, 0, 0, 0);
 	vlayout->addLayout(hlayout);
 	// 6.2 创建名字的label
-	QLabel* groupnameLabel = new QLabel();
+	groupnameLabel = new QLabel();
 	groupnameLabel->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
 	groupnameLabel->setFixedHeight(50);
 	groupnameLabel->setStyleSheet("QLabel { font-size: 18px; }");
@@ -101,6 +103,9 @@ GroupSessionDetailWidget::GroupSessionDetailWidget(QWidget *parent)
 		this->addMember(item);
 	}
 #endif // TEST_UI
+
+	// 8. 从服务器加载数据
+	initData();
 }
 
 void GroupSessionDetailWidget::addMember(AvatarItem* avatarItem)
@@ -113,6 +118,32 @@ void GroupSessionDetailWidget::addMember(AvatarItem* avatarItem)
 	}
 	glayout->addWidget(avatarItem, curRow, curCol);
 	++curCol;
+}
+
+void GroupSessionDetailWidget::initData()
+{
+	model::DataCenter* dataCenter = model::DataCenter::getInstance();
+	connect(dataCenter, &model::DataCenter::getMemberListDone, this, &GroupSessionDetailWidget::initMembers);
+	dataCenter->getMemberListAsync(dataCenter->getCurrentChatSessionId());
+}
+
+void GroupSessionDetailWidget::initMembers(const QString& chatSessionId)
+{
+	model::DataCenter* dataCenter = model::DataCenter::getInstance();
+	QList<model::UserInfo>* memberList = dataCenter->getMemberList(chatSessionId);
+	if (memberList == nullptr)
+	{
+		LOG() << "获取到成员列表为空 chatSessionId=" << chatSessionId;
+		return;
+	}
+	for (const auto& u : *memberList)
+	{
+		AvatarItem* avatarItem = new AvatarItem(u._avatar, u._nickname);
+		addMember(avatarItem);
+	}
+	MainWidget* mainWidget = MainWidget::getInstance();
+	QString sessionName = mainWidget->getSessionTitleLabel()->text();
+	groupnameLabel->setText(sessionName); // 这里使用会话标题表示群聊名称
 }
 
 GroupSessionDetailWidget::~GroupSessionDetailWidget() {}

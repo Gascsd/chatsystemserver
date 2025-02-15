@@ -66,36 +66,38 @@ namespace network
 		websocketClient.sendBinaryMessage(bdoy);
 		LOG() << "[WS身份认证] requestId=" << req.requestId() << ", loginSessionId=" << req.sessionId();
 	}
-	void NetClient::handleWsResponse(const zht_im::NotifyMessage& notyfyMessage)
+	void NetClient::handleWsResponse(const zht_im::NotifyMessage& notifyMessage)
 	{
-		// LOG() << "调用handleWsResponse, 通知类型为：" << notyfyMessage.notifyType();
-		if (notyfyMessage.notifyType() == zht_im::NotifyTypeGadget::FRIEND_ADD_APPLY_NOTIFY)
+		// LOG() << "调用handleWsResponse, 通知类型为：" << notifyMessage.notifyType();
+		if (notifyMessage.notifyType() == zht_im::NotifyTypeGadget::FRIEND_ADD_APPLY_NOTIFY)
 		{
 			model::UserInfo userInfo;
-			userInfo.load(notyfyMessage.friendAddApply().userInfo());
+			userInfo.load(notifyMessage.friendAddApply().userInfo());
 			handleWsAddFriendApply(userInfo);
 		}
-		else if (notyfyMessage.notifyType() == zht_im::NotifyTypeGadget::FRIEND_ADD_PROCESS_NOTIFY)
+		else if (notifyMessage.notifyType() == zht_im::NotifyTypeGadget::FRIEND_ADD_PROCESS_NOTIFY)
 		{
 			model::UserInfo userInfo;
-			userInfo.load(notyfyMessage.friendProcessResult().userInfo());
-			bool agree = notyfyMessage.friendProcessResult().agree();
+			userInfo.load(notifyMessage.friendProcessResult().userInfo());
+			bool agree = notifyMessage.friendProcessResult().agree();
 			handleWsAddFriendProcess(userInfo, agree);
 		}
-		else if (notyfyMessage.notifyType() == zht_im::NotifyTypeGadget::CHAT_SESSION_CREATE_NOTIFY)
+		else if (notifyMessage.notifyType() == zht_im::NotifyTypeGadget::CHAT_SESSION_CREATE_NOTIFY)
 		{
-
+			model::ChatSessionInfo chatSessionInfo;
+			chatSessionInfo.load(notifyMessage.newChatSessionInfo().chatSessionInfo());
+			handleWsSessionCreate(chatSessionInfo);
 		}
-		else if (notyfyMessage.notifyType() == zht_im::NotifyTypeGadget::CHAT_MESSAGE_NOTIFY)
+		else if (notifyMessage.notifyType() == zht_im::NotifyTypeGadget::CHAT_MESSAGE_NOTIFY)
 		{
 			// 1. 收到消息，把pb中的message 转成客户端的message类型
 			model::Message message;
-			message.load(notyfyMessage.newMessageInfo().messageInfo());
+			message.load(notifyMessage.newMessageInfo().messageInfo());
 			handleWsMessage(message);
 		}
-		else if (notyfyMessage.notifyType() == zht_im::NotifyTypeGadget::FRIEND_REMOVE_NOTIFY)
+		else if (notifyMessage.notifyType() == zht_im::NotifyTypeGadget::FRIEND_REMOVE_NOTIFY)
 		{
-			const QString& userId = notyfyMessage.friendRemove().userId();
+			const QString& userId = notifyMessage.friendRemove().userId();
 			handleWsRemoveFriend(userId);
 		}
 		else
@@ -169,6 +171,18 @@ namespace network
 		{
 			emit dataCenter->receiveFriendProcessDone(userInfo._nickname, agree);
 		}
+	}
+
+	void NetClient::handleWsSessionCreate(const model::ChatSessionInfo& chatSessionInfo)
+	{
+		QList<model::ChatSessionInfo>* chatSessiaonList = dataCenter->getChatSessionList();
+		if (chatSessiaonList == nullptr)
+		{
+			LOG() << "客户端没有加载会话列表";
+			return;
+		}
+		chatSessiaonList->push_front(chatSessionInfo);
+		emit dataCenter->receiveSessionCreateDone();
 	}
 
 	// 接下来都是http的操作
@@ -707,6 +721,76 @@ namespace network
 			emit dataCenter->rejectFriendApplyDone(); // 这是在发起一个信号
 
 			LOG() << "[拒绝好友申请] 处理响应完毕 requestId=" << req.requestId();
+			});
+	}
+
+	void NetClient::createGroupChatSession(const QString& loginSessionId, const QList<QString>& userIdList)
+	{
+		zht_im::ChatSessionCreateReq req;
+		req.setRequestId(makeRequestId());
+		req.setSessionId(loginSessionId);
+		QString groupName = dataCenter->getMyself()->_nickname;
+		for (auto& id : userIdList)
+		{
+			model::UserInfo* userInfo = dataCenter->findFriendById(id);
+			if (userInfo != nullptr) groupName += userInfo->_nickname;
+		}
+		if (groupName.size() > 20) groupName = groupName.left(17) + "...";
+		req.setChatSessionName(groupName);
+		req.setMemberIdList(userIdList);
+
+		QByteArray body = req.serialize(&serializer);
+		LOG() << "[创建群聊会话] 发送请求 requestId=" << req.requestId() << ", loginSessionId=" << req.sessionId()
+			<< ", userIdList=" << userIdList;
+
+		QNetworkReply* httpResp = sendHttpRequest("/service/friend/create_chat_session", body);
+
+		connect(httpResp, &QNetworkReply::finished, this, [=]() {
+			bool ok = false;
+			QString reason = "";
+			auto resp = handleHttpResponse<zht_im::ChatSessionCreateRsp>(httpResp, &ok, &reason);
+			if (!ok)
+			{
+				LOG() << "[创建群聊会话] 出错, requestId=" << req.requestId() << ", reason = " << reason;
+				return;
+			}
+
+			// 发送信号通知调用逻辑，已经处理完毕响应
+			emit dataCenter->createGroupChatSessionDone(); // 这是在发起一个信号
+
+			LOG() << "[创建群聊会话] 处理响应完毕 requestId=" << req.requestId();
+			});
+	}
+
+	void NetClient::getMemberList(const QString& loginSessionId, const QString& chatSessionId)
+	{
+		zht_im::GetChatSessionMemberReq req;
+		req.setRequestId(makeRequestId());
+		req.setSessionId(loginSessionId);
+		req.setChatSessionId(chatSessionId);
+
+		QByteArray body = req.serialize(&serializer);
+		LOG() << "[获取会话成员列表] 发送请求 requestId=" << req.requestId() << ", loginSessionId=" << req.sessionId()
+			<< ", chatSessionId=" << req.chatSessionId();
+
+		QNetworkReply* httpResp = sendHttpRequest("/service/friend/get_chat_session_member", body);
+
+		connect(httpResp, &QNetworkReply::finished, this, [=]() {
+			bool ok = false;
+			QString reason = "";
+			auto resp = handleHttpResponse<zht_im::GetChatSessionMemberRsp>(httpResp, &ok, &reason);
+			if (!ok)
+			{
+				LOG() << "[获取会话成员列表] 出错, requestId=" << req.requestId() << ", reason = " << reason;
+				return;
+			}
+
+			dataCenter->resetMemberList(chatSessionId, resp->memberInfoList());
+
+			// 发送信号通知调用逻辑，已经处理完毕响应
+			emit dataCenter->getMemberListDone(chatSessionId); // 这是在发起一个信号
+
+			LOG() << "[获取会话成员列表] 处理响应完毕 requestId=" << req.requestId();
 			});
 	}
 

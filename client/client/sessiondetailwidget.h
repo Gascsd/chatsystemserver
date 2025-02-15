@@ -5,6 +5,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QWidget>
+#include "model/data.h"
 
 // 表示 一个头像+一个名字 的组合控件
 class AvatarItem : public QWidget
@@ -26,10 +27,14 @@ class SessionDetailWidget : public QDialog
 {
     Q_OBJECT
 public:
-    SessionDetailWidget(QWidget* parent);
+    SessionDetailWidget(QWidget* parent, const model::UserInfo& userInfo = model::UserInfo());
+
+    void clickDeleteFriendBtn();
 
 private:
     QPushButton* deleteFriendBtn;
+
+    model::UserInfo userInfo;
 };
 
 #endif // SESSIONDETAILWIDGET_H

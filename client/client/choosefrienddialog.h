@@ -45,10 +45,14 @@ class ChooseFriendDialog : public QDialog
 {
     Q_OBJECT
 public:
-    ChooseFriendDialog(QWidget* parent);
+    ChooseFriendDialog(QWidget* parent, const QString& userId);
 
     void initLeft(QHBoxLayout* layout);
     void initRight(QHBoxLayout* layout);
+    void clickOkBtn();
+    QList<QString> generateMemberList();
+
+    void initData();
 
     void addFriend(const QString& userId, const QIcon& avatar, const QString& name, bool checked);
     void addSelectedFriend(const QString& userId, const QIcon& avatar, const QString& name);
@@ -57,6 +61,7 @@ public:
 private:
     QWidget* totalContainer;
     QWidget* selectContainer;
+    QString userId;
 };
 
 #endif // CHOOSEFRIENDDIALOG_H

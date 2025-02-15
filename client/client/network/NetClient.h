@@ -35,11 +35,13 @@ public:
 
     void sendAuth(); // 发送身份认证请求
 
-    void handleWsResponse(const zht_im::NotifyMessage& notyfyMessage);
+    void handleWsResponse(const zht_im::NotifyMessage& notifyMessage);
     void handleWsMessage(const model::Message& message);
     void handleWsRemoveFriend(const QString& userId);
     void handleWsAddFriendApply(const model::UserInfo& userInfo);
     void handleWsAddFriendProcess(const model::UserInfo& userInfo, bool agree);
+    void handleWsSessionCreate(const model::ChatSessionInfo& chatSessionInfo);
+
 
     QNetworkReply* sendHttpRequest(const QString& apiPath, const QByteArray& body); // 封装发送请求的逻辑
 
@@ -92,6 +94,8 @@ public:
     void addFriendApply(const QString& loginSessionId, const QString& userId);
     void acceptFriendApply(const QString& loginSessionId, const QString& userId);
     void rejectFriendApply(const QString& loginSessionId, const QString& userId);
+    void createGroupChatSession(const QString& loginSessionId, const QList<QString>& userIdList);
+    void getMemberList(const QString& loginSessionId, const QString& chatSessionId);
 
 private:
     model::DataCenter* dataCenter;

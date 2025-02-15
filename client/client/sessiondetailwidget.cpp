@@ -1,8 +1,10 @@
 #include "sessiondetailwidget.h"
 
 #include <QVBoxLayout>
+#include <QMessageBox>
 #include "debug.h"
 #include "choosefrienddialog.h"
+#include "model/DataCenter.h"
 
 AvatarItem::AvatarItem(const QIcon &avatar, const QString &name)
 {
@@ -51,7 +53,8 @@ AvatarItem::AvatarItem(const QIcon &avatar, const QString &name)
     layout->addWidget(nameLabel);
 }
 
-SessionDetailWidget::SessionDetailWidget(QWidget *parent)
+SessionDetailWidget::SessionDetailWidget(QWidget *parent, const model::UserInfo& userInfo)
+    : userInfo(userInfo)
 {
     // 1. 设置基本属性
     this->setWindowTitle("会话详情");
@@ -77,9 +80,12 @@ SessionDetailWidget::SessionDetailWidget(QWidget *parent)
 
     // 4. 添加当前用户信息 （临时构造的假数据）
 #if TEST_UI
-    AvatarItem* currntUser = new AvatarItem(QIcon(":/resource/image/defaultAvatar.png"), "张三123456");
-    layout->addWidget(currntUser, 0, 1);
+    AvatarItem* currentUser = new AvatarItem(QIcon(":/resource/image/defaultAvatar.png"), "张三123456");
+    layout->addWidget(currentUser, 0, 1);
 #endif
+    AvatarItem* currentUser = new AvatarItem(userInfo._avatar, userInfo._nickname);
+    layout->addWidget(currentUser, 0, 1);
+
 
     // 5. 添加删除好友按钮
     deleteFriendBtn = new QPushButton();
@@ -92,7 +98,24 @@ SessionDetailWidget::SessionDetailWidget(QWidget *parent)
 
     // 6. 添加信号槽，处理 创建群聊 按钮
     connect(creatrGroupBtn->getAvatar(), &QPushButton::clicked, this, [=]() {
-        ChooseFriendDialog* chooseFriendDialog = new ChooseFriendDialog(this);
+        ChooseFriendDialog* chooseFriendDialog = new ChooseFriendDialog(this, userInfo._userId);
         chooseFriendDialog->exec();
     });
+
+    connect(deleteFriendBtn, &QPushButton::clicked, this, &SessionDetailWidget::clickDeleteFriendBtn);
+}
+
+void SessionDetailWidget::clickDeleteFriendBtn()
+{
+    auto result = QMessageBox::warning(this, "确认删除", "确认删除该好友", QMessageBox::Ok | QMessageBox::Cancel);
+    if (result != QMessageBox::Ok)
+    {
+        LOG() << "用户取消了好友删除";
+        return;
+    }
+    
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    dataCenter->deleteFriendAsync(this->userInfo._userId);
+
+    this->close();
 }

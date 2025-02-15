@@ -74,6 +74,7 @@ public:
     void updateRecentMessage(const QString& chatSessionId);
     void switchSession(const QString& userId); // 点击好友项之后切换到指定会话
 
+    QLabel* getSessionTitleLabel();
     MessageShowArea* getMessageShowArea();
 };
 #endif // MAINWIDGET_H
