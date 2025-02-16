@@ -2,6 +2,9 @@
 
 #include <QDialog>
 #include <QGridLayout>
+#include <QRadioButton>
+#include <QLineEdit>
+
 #include "model/data.h"
 
 using model::Message;
@@ -34,7 +37,15 @@ public:
 	void clear();
 
 private:
+	void clickSearchBtn();
 	void initScrollArea(QGridLayout* layout);
+	void clickSearchBtnDone();
 
 	QWidget* container; // 持有所有历史消息
+
+	QLineEdit* searchEdit;
+	QRadioButton* keyRadioBtn;
+	QRadioButton* timeRadioBtn;
+	QDateTimeEdit* beginTimeEdit;
+	QDateTimeEdit* endTimeEdit;
 };

@@ -97,6 +97,8 @@ public:
     void createGroupChatSession(const QString& loginSessionId, const QList<QString>& userIdList);
     void getMemberList(const QString& loginSessionId, const QString& chatSessionId);
     void searchUser(const QString& loginSessionId, const QString& searchKey);
+    void searchMessage(const QString& loginSessionId, const QString& chatSessionId, const QString& searchKey);
+    void searchMessageByTime(const QString& loginSessionId, const QString& chatSessionId, const QDateTime& beginTime, const QDateTime& endTime);
 
 private:
     model::DataCenter* dataCenter;

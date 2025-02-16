@@ -415,6 +415,37 @@ namespace model
 		}
 	}
 
+	void DataCenter::searchMessageAsync(const QString& searchKey)
+	{
+		netClient.searchMessage(loginSessionId, this->currentChatSessionId, searchKey);
+	}
+
+	void DataCenter::searchMessageByTimeAsync(const QDateTime& beginTime, const QDateTime& endTime)
+	{
+		netClient.searchMessageByTime(loginSessionId, this->currentChatSessionId, beginTime, endTime);
+	}
+
+	QList<Message>* DataCenter::getSearchMessageResult()
+	{
+		return searchMessageResult;
+	}
+
+	void DataCenter::resetSearchMessageResult(const QList<zht_im::MessageInfo>& msgList)
+	{
+		if (searchMessageResult == nullptr)
+		{
+			searchMessageResult = new QList<Message>();
+		}
+		searchMessageResult->clear();
+
+		for (const auto& m : msgList)
+		{
+			Message msg;
+			msg.load(m);
+			searchMessageResult->push_back(msg);
+		}
+	}
+
 	void DataCenter::resetNickname(const QString& nickname)
 	{
 		if (myself == nullptr)
@@ -521,6 +552,6 @@ namespace model
 		delete recentMessages;
 		delete unreadMessageCount;
 		delete searchUserResult;
-		delete searchMessage;
+		delete searchMessageResult;
 	}
 } // namespace model

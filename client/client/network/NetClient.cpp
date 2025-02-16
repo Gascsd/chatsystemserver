@@ -826,4 +826,71 @@ namespace network
 			});
 	}
 
+	void NetClient::searchMessage(const QString& loginSessionId, const QString& chatSessionId, const QString& searchKey)
+	{
+		zht_im::MsgSearchReq req;
+		req.setRequestId(makeRequestId());
+		req.setSessionId(loginSessionId);
+		req.setChatSessionId(chatSessionId);
+		req.setSearchKey(searchKey);
+
+		QByteArray body = req.serialize(&serializer);
+		LOG() << "[按关键字搜索历史消息] 发送请求 requestId=" << req.requestId() << ", loginSessionId=" << req.sessionId()
+			<< ", chatSessionId=" << req.chatSessionId() << ", searchKey=" << req.searchKey();
+
+		QNetworkReply* httpResp = sendHttpRequest("/service/message_storage/search_history", body);
+
+		connect(httpResp, &QNetworkReply::finished, this, [=]() {
+			bool ok = false;
+			QString reason = "";
+			auto resp = handleHttpResponse<zht_im::MsgSearchRsp>(httpResp, &ok, &reason);
+			if (!ok)
+			{
+				LOG() << "[按关键字搜索历史消息] 出错, requestId=" << req.requestId() << ", reason = " << reason;
+				return;
+			}
+
+			dataCenter->resetSearchMessageResult(resp->msgList());
+
+			// 发送信号通知调用逻辑，已经处理完毕响应
+			emit dataCenter->searchMessageDone(); // 这是在发起一个信号
+
+			LOG() << "[按关键字搜索历史消息] 处理响应完毕 requestId=" << req.requestId();
+			});
+	}
+
+	void NetClient::searchMessageByTime(const QString& loginSessionId, const QString& chatSessionId, const QDateTime& beginTime, const QDateTime& endTime)
+	{
+		zht_im::GetHistoryMsgReq req;
+		req.setRequestId(makeRequestId());
+		req.setSessionId(loginSessionId);
+		req.setChatSessionId(chatSessionId);
+		req.setStartTime(beginTime.toSecsSinceEpoch());
+		req.setOverTime(endTime.toSecsSinceEpoch());
+
+		QByteArray body = req.serialize(&serializer);
+		LOG() << "[按时间搜索历史消息] 发送请求 requestId=" << req.requestId() << ", loginSessionId=" << req.sessionId()
+			<< ", chatSessionId=" << req.chatSessionId() << ", beginTime=" << beginTime << ", endTime=" << endTime;
+
+		QNetworkReply* httpResp = sendHttpRequest("/service/message_storage/get_history", body);
+
+		connect(httpResp, &QNetworkReply::finished, this, [=]() {
+			bool ok = false;
+			QString reason = "";
+			auto resp = handleHttpResponse<zht_im::GetHistoryMsgRsp>(httpResp, &ok, &reason);
+			if (!ok)
+			{
+				LOG() << "[按时间搜索历史消息] 出错, requestId=" << req.requestId() << ", reason = " << reason;
+				return;
+			}
+
+			dataCenter->resetSearchMessageResult(resp->msgList());
+
+			// 发送信号通知调用逻辑，已经处理完毕响应
+			emit dataCenter->searchMessageDone(); // 这是在发起一个信号
+
+			LOG() << "[按时间搜索历史消息] 处理响应完毕 requestId=" << req.requestId();
+			});
+	}
+
 } // namespace network

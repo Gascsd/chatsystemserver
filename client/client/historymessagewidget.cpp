@@ -11,6 +11,8 @@
 #include <QVBoxLayout>
 
 #include "debug.h"
+#include "model/DataCenter.h"
+#include "Toast.h"
 
 using namespace model;
 
@@ -97,8 +99,8 @@ HistoryMessageWidget::HistoryMessageWidget(QWidget *parent)
 	this->setLayout(layout);
 
 	// 3. 创建单选按钮
-	QRadioButton* keyRadioBtn = new QRadioButton();
-	QRadioButton* timeRadioBtn = new QRadioButton();
+	keyRadioBtn = new QRadioButton();
+	timeRadioBtn = new QRadioButton();
 	keyRadioBtn->setText("按关键字查询");
 	timeRadioBtn->setText("按时间查询");
 
@@ -108,7 +110,7 @@ HistoryMessageWidget::HistoryMessageWidget(QWidget *parent)
 	layout->addWidget(timeRadioBtn, 0, 2, 1, 2);
 
 	// 4. 创建搜索框
-	QLineEdit* searchEdit = new QLineEdit();
+	searchEdit = new QLineEdit();
 	searchEdit->setFixedHeight(50);
 	searchEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 	searchEdit->setPlaceholderText("请输入要搜索的关键字");
@@ -133,8 +135,8 @@ HistoryMessageWidget::HistoryMessageWidget(QWidget *parent)
 	QLabel* endTag = new QLabel();
 	beginTag->setText("开始时间");
 	endTag->setText("结束时间");
-	QDateTimeEdit* beginTimeEdit = new QDateTimeEdit();
-	QDateTimeEdit* endTimeEdit = new QDateTimeEdit();
+	beginTimeEdit = new QDateTimeEdit();
+	endTimeEdit = new QDateTimeEdit();
 	beginTimeEdit->setFixedHeight(45);
 	endTimeEdit->setFixedHeight(45);
 	beginTag->hide();
@@ -158,6 +160,8 @@ HistoryMessageWidget::HistoryMessageWidget(QWidget *parent)
 
 		layout->addWidget(searchEdit, 1, 0, 1, 8);
 		searchEdit->show();
+
+		this->clear(); // 清空结果显示区
 	});
 	connect(timeRadioBtn, &QRadioButton::clicked, this, [=]() {
 		layout->removeWidget(searchEdit);
@@ -172,7 +176,11 @@ HistoryMessageWidget::HistoryMessageWidget(QWidget *parent)
 		beginTimeEdit->show();
 		endTag->show();
 		endTimeEdit->show();
+		
+		this->clear(); // 清空结果显示区
 	});
+
+	connect(searchBtn, &QPushButton::clicked, this, &HistoryMessageWidget::clickSearchBtn);
 
 	// 构造测试数据
 #if TEST_UI
@@ -212,6 +220,34 @@ void HistoryMessageWidget::clear()
 	}
 }
 
+void HistoryMessageWidget::clickSearchBtn()
+{
+	model::DataCenter* dataCenter = model::DataCenter::getInstance();
+	// 根据单选框的选中情况，执行两个逻辑
+	connect(dataCenter, &model::DataCenter::searchMessageDone, this, &HistoryMessageWidget::clickSearchBtnDone, Qt::UniqueConnection);
+
+	if (keyRadioBtn->isChecked()) // 按照关键词搜索
+	{
+		const QString& searchKey = searchEdit->text();
+		if (searchKey.isEmpty())
+		{
+			return;
+		}
+		dataCenter->searchMessageAsync(searchKey);
+	}
+	else // 按时间范围搜索
+	{
+		auto beginTime = beginTimeEdit->dateTime();
+		auto endTime = endTimeEdit->dateTime();
+		if (beginTime >= endTime)
+		{
+			Toast::showMessage("时间错误，开始时间大于结束时间");
+			return;
+		}
+		dataCenter->searchMessageByTimeAsync(beginTime, endTime);
+	}
+}
+
 void HistoryMessageWidget::initScrollArea(QGridLayout* layout)
 {
 	// 1. 创建滚动区域对象
@@ -237,5 +273,20 @@ void HistoryMessageWidget::initScrollArea(QGridLayout* layout)
 	container->setLayout(vlayout);
 
 	layout->addWidget(scrollArea, 2, 0, 1, 9);
+}
+
+void HistoryMessageWidget::clickSearchBtnDone()
+{
+	// 1. 拿到结果
+	model::DataCenter* dataCenter = model::DataCenter::getInstance();
+	auto* messageResult = dataCenter->getSearchMessageResult();
+	if (messageResult == nullptr)
+		return;
+	// 2. 显示到界面上
+	this->clear();
+	for (const auto& m : *messageResult)
+	{
+		addHistoryMessage(m);
+	}
 }
 

@@ -84,6 +84,11 @@ void MessageEditArea::initSignalSlot()
     model::DataCenter* dataCenter = model::DataCenter::getInstance();
     // 1. 关联显示历史窗口
     connect(showHistoryBtn, &QPushButton::clicked, this, [=]() {
+        if (dataCenter->getCurrentChatSessionId() == "")
+        {
+            LOG() << "当前没有选择任何会话";
+            return;
+        }
         HistoryMessageWidget* historyMessageWidget = new HistoryMessageWidget(this);
         historyMessageWidget->exec();
     });

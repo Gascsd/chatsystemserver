@@ -25,7 +25,7 @@ namespace model
 		QHash<QString, QList<Message>>* recentMessages = nullptr;	// 每个会话的最近消息   (K:ChatSessionId, V: 消息列表)
 		QHash<QString, int>* unreadMessageCount = nullptr;			// 存储每个会话的未读消息个数 (K:ChatSessionId, V: 未读消息个数)
 		QList<UserInfo>* searchUserResult = nullptr;				// 用户的好友搜索结果
-		QList<Message>* searchMessage = nullptr;					// 历史消息结果
+		QList<Message>* searchMessageResult = nullptr;					// 历史消息结果
 		QString currentVerifyCodeId = "";							// 短信验证码Id
 
 	public:
@@ -118,6 +118,12 @@ namespace model
 		QList<UserInfo>* getSearchUserResult();
 		void resetSearchUserResult(const QList<zht_im::UserInfo>& userList);
 
+		// 搜索历史消息
+		void searchMessageAsync(const QString& searchKey);
+		void searchMessageByTimeAsync(const QDateTime& beginTime, const QDateTime& endTime);
+		QList<Message>* getSearchMessageResult();
+		void resetSearchMessageResult(const QList<zht_im::MessageInfo>& msgList);
+
         //   ---------------辅助函数------------
         
 		ChatSessionInfo* findChatSessionById(const QString& chatSessionId);		// 根据会话ID查询会话信息
@@ -155,5 +161,6 @@ namespace model
 		void receiveSessionCreateDone();
 		void getMemberListDone(const QString& chatSessionId);
 		void searchUserDone();
+		void searchMessageDone();
 	};  
 } // namespace model
