@@ -5,7 +5,7 @@
 
 #define TEST_GROUP_SESSION_DETAIL 1
 
-#define TEST_SKIP_LOGIN 1
+#define TEST_SKIP_LOGIN 0
 
 #define TEST_NETWORK 1
 

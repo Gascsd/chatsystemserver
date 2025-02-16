@@ -54,7 +54,7 @@ private:
     void initLeftWindow();
     void initMiddleWindow();
     void initRightWindow();
-
+    void initWebsocket();
     void initSignalSlot();
 
     void switchTableToSession();

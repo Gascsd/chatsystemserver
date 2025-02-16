@@ -43,6 +43,7 @@ namespace model
 		const QString& getLoginSessionId() const { return loginSessionId; }
 		// 验证网络连通性
 		void ping() { netClient.ping(); }
+		void initWebsocket();
 
 		// 通过网络获取到用户的个人信息，是一个异步函数，只负责发送HTTP请求
 		void getMyselfAsync();
@@ -124,8 +125,14 @@ namespace model
 		QList<Message>* getSearchMessageResult();
 		void resetSearchMessageResult(const QList<zht_im::MessageInfo>& msgList);
 
+		// 登录注册
+		void userLoginAsync(const QString& username, const QString& password);
+		void userRegisterAsync(const QString& username, const QString& password);
+		void phoneLoginAsync(const QString& phone, const QString& verifyCode);
+
         //   ---------------辅助函数------------
         
+		void resetLoginSessionId(const QString& loginSessionId);				// 设置登录会话ID
 		ChatSessionInfo* findChatSessionById(const QString& chatSessionId);		// 根据会话ID查询会话信息
 		ChatSessionInfo* findChatSessionByUserId(const QString& userId);		// 根据用户Id查找
 		void topChatSessionInfo(const ChatSessionInfo& chatSessionInfo);		// 把指定会话信息放在头部
@@ -162,5 +169,8 @@ namespace model
 		void getMemberListDone(const QString& chatSessionId);
 		void searchUserDone();
 		void searchMessageDone();
+		void userLoginDone(bool ok, const QString& reason);
+		void userRegisterDone(bool ok, const QString& reason);
+		void phoneLoginDone(bool ok, const QString& reason);
 	};  
 } // namespace model

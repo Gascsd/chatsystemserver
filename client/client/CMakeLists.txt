@@ -50,6 +50,7 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         Toast.h Toast.cpp
         model/DataCenter.h model/DataCenter.cpp
         network/NetClient.h network/NetClient.cpp
+        VerifyCodeWidget.h VerifyCodeWidget.cpp
     )
 
     qt_add_protobuf(client PROTO_FILES ${PB_FILES})

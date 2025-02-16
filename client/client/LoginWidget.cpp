@@ -5,8 +5,10 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include "Toast.h"
-
+#include "VerifyCodeWidget.h"
 #include "PhoneLoginWidegt.h"
+#include "model/DataCenter.h"
+#include "mainwidget.h"
 
 LoginWidget::LoginWidget(QWidget* parent)
 	: QWidget(parent)
@@ -25,7 +27,7 @@ LoginWidget::LoginWidget(QWidget* parent)
 	this->setLayout(layout);
 
 	// 3. 创建标题
-	QLabel* titleLabel = new QLabel();
+	titleLabel = new QLabel();
 	titleLabel->setText("登录");
 	titleLabel->setAlignment(Qt::AlignCenter);
 	titleLabel->setFixedHeight(50);
@@ -33,14 +35,14 @@ LoginWidget::LoginWidget(QWidget* parent)
 
 	// 4. 创建用户名输入框
 	QString editStyle = "QLineEdit { border: none; border-radius: 10px; font-size: 20px; background-color: rgb(240, 240, 240); padding-left: 5px;}";
-	QLineEdit* usernameEdit = new QLineEdit();
+	usernameEdit = new QLineEdit();
 	usernameEdit->setFixedHeight(40);
 	usernameEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 	usernameEdit->setPlaceholderText("用户名");
 	usernameEdit->setStyleSheet(editStyle);
 
 	// 5. 创建密码输入框
-	QLineEdit* passwdEdit = new QLineEdit();
+	passwdEdit = new QLineEdit();
 	passwdEdit->setFixedHeight(40);
 	passwdEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 	passwdEdit->setPlaceholderText("密码");
@@ -48,19 +50,21 @@ LoginWidget::LoginWidget(QWidget* parent)
 	passwdEdit->setEchoMode(QLineEdit::Password);
 
 	// 6. 创建验证码输入框
-	QLineEdit* verifyCodeEdit = new QLineEdit();
+	verifyCodeEdit = new QLineEdit();
 	verifyCodeEdit->setFixedHeight(40);
 	verifyCodeEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 	verifyCodeEdit->setPlaceholderText("验证码");
 	verifyCodeEdit->setStyleSheet(editStyle);
 
 	// 7. 创建显示验证码图片的空间
-	QPushButton* verifyCodeWidget = new QPushButton();
-	verifyCodeWidget->setText("验证码");
-	verifyCodeWidget->setStyleSheet("QPushButton { border: none }");
+	//QPushButton* verifyCodeWidget = new QPushButton();
+	//verifyCodeWidget->setText("验证码");
+	//verifyCodeWidget->setStyleSheet("QPushButton { border: none }");
+	verifyCodeWidget = new VerifyCodeWidget(this);
+
 
 	// 8. 创建登录按钮
-	QPushButton* submitBtn = new QPushButton();
+	submitBtn = new QPushButton();
 	submitBtn->setText("登录");
 	submitBtn->setFixedHeight(40);
 	submitBtn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
@@ -69,7 +73,7 @@ LoginWidget::LoginWidget(QWidget* parent)
 	submitBtn->setStyleSheet(btnGreenStyle);
 
 	// 9. 创建切换到手机号登录按钮
-	QPushButton* phoneModeBtn = new QPushButton(this);
+	phoneModeBtn = new QPushButton(this);
 	phoneModeBtn->setText("手机号登录");
 	phoneModeBtn->setFixedHeight(40);
 	QString btnModeStyle = "QPushButton { border: none; border-radius: 10px; background-color: transparent }";
@@ -77,7 +81,7 @@ LoginWidget::LoginWidget(QWidget* parent)
 	phoneModeBtn->setStyleSheet(btnModeStyle); 
 
 	// 10. 创建切换到注册按钮
-	QPushButton* switchModeBtn = new QPushButton();
+	switchModeBtn = new QPushButton();
 	switchModeBtn->setText("注册");
 	switchModeBtn->setFixedHeight(40);
 	switchModeBtn->setStyleSheet(btnModeStyle);
@@ -93,25 +97,7 @@ LoginWidget::LoginWidget(QWidget* parent)
 	layout->addWidget(switchModeBtn, 5, 3, 1, 2);
 
 	// 12. 添加信号槽
-	connect(switchModeBtn, &QPushButton::clicked, this, [=]() {
-		if (isLoginMode) // 切换到注册
-		{
-			this->setWindowTitle("注册");
-			titleLabel->setText("注册");
-			submitBtn->setText("注册");
-			phoneModeBtn->setText("手机号注册");
-			switchModeBtn->setTabletTracking("登录");
-		}
-		else
-		{
-			this->setWindowTitle("登录");
-			titleLabel->setText("登录");
-			submitBtn->setText("登录");
-			phoneModeBtn->setText("手机号登录");
-			switchModeBtn->setTabletTracking("注册");
-		}
-		isLoginMode = !isLoginMode;
-	});
+	connect(switchModeBtn, &QPushButton::clicked, this, &LoginWidget::switchMode);
 
 	connect(phoneModeBtn, &QPushButton::clicked, this, [=]() {
 		PhoneLoginWidegt* phoneLoginWidegt = new PhoneLoginWidegt(nullptr);
@@ -120,10 +106,101 @@ LoginWidget::LoginWidget(QWidget* parent)
 		this->close();
 	});
 
-	connect(submitBtn, &QPushButton::clicked, this, [=]() {
-		Toast::showMessage("测试一下通知窗口");
-		});
+	connect(submitBtn, &QPushButton::clicked, this, &LoginWidget::clickSubmitBtn);
 }
 
 LoginWidget::~LoginWidget()
 {}
+
+void LoginWidget::switchMode()
+{
+	if (isLoginMode) // 切换到注册
+	{
+		this->setWindowTitle("注册");
+		titleLabel->setText("注册");
+		submitBtn->setText("注册");
+		phoneModeBtn->setText("手机号注册");
+		switchModeBtn->setTabletTracking("登录");
+	}
+	else
+	{
+		this->setWindowTitle("登录");
+		titleLabel->setText("登录");
+		submitBtn->setText("登录");
+		phoneModeBtn->setText("手机号登录");
+		switchModeBtn->setTabletTracking("注册");
+	}
+	isLoginMode = !isLoginMode;
+	usernameEdit->clear();
+	passwdEdit->clear();
+	verifyCodeEdit->clear();
+	verifyCodeWidget->refreshVerifyCode();
+}
+
+void LoginWidget::clickSubmitBtn()
+{
+	// 1. 从输入框拿到内容
+	const QString& username = usernameEdit->text();
+	const QString& password = passwdEdit->text();
+	const QString& verifyCode = verifyCodeEdit->text();
+	if (username.isEmpty())
+	{
+		Toast::showMessage("用户名不能为空");
+		return;
+	}
+	if (password.isEmpty())
+	{
+		Toast::showMessage("密码不能为空");
+		return;
+	}
+	if (verifyCode.isEmpty())
+	{
+		Toast::showMessage("验证码不能为空");
+		return;
+	}
+
+	// 2. 判断验证码的正确性
+	if (verifyCodeWidget->checkVerifyCode(verifyCode) == false)
+	{
+		Toast::showMessage("验证码不正确");
+		return;
+	}
+
+	// 3. 发送网络请求
+	model::DataCenter* dataCenter = model::DataCenter::getInstance();
+	if (isLoginMode) // 登录
+	{
+		connect(dataCenter, &model::DataCenter::userLoginDone, this, &LoginWidget::userLoginDone);
+		dataCenter->userLoginAsync(username, password);
+	}
+	else
+	{
+		connect(dataCenter, &model::DataCenter::userRegisterDone, this, &LoginWidget::userRegisterDone);
+		dataCenter->userRegisterAsync(username, password);
+	}
+}
+
+void LoginWidget::userLoginDone(bool ok, const QString& reason)
+{
+	if (!ok)
+	{
+		Toast::showMessage("登录失败:" + reason);
+		return;
+	}
+	// 登录成功，跳转到主界面
+	MainWidget* mainWidget = MainWidget::getInstance();
+	mainWidget->show();
+	this->close();
+}
+
+void LoginWidget::userRegisterDone(bool ok, const QString& reason)
+{
+	if (!ok)
+	{
+		Toast::showMessage("注册失败:" + reason);
+		return;
+	}
+	// 注册成功，切换到登录界面
+	Toast::showMessage("注册成功:");
+	switchMode();
+}

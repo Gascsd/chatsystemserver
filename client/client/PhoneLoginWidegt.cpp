@@ -6,6 +6,9 @@
 #include <QPushButton>
 
 #include "LoginWidget.h"
+#include "mainwidget.h"
+#include "Toast.h"
+#include "model/DataCenter.h"
 
 PhoneLoginWidegt::PhoneLoginWidegt(QWidget *parent)
 	: QWidget(parent)
@@ -33,21 +36,21 @@ PhoneLoginWidegt::PhoneLoginWidegt(QWidget *parent)
 
 	// 4. 创建手机号输入框
 	QString editStyle = "QLineEdit { border: none; border-radius: 10px; font-size: 20px; background-color: rgb(240, 240, 240); padding-left: 5px;}";
-	QLineEdit* phoneEdit = new QLineEdit();
+	phoneEdit = new QLineEdit();
 	phoneEdit->setFixedHeight(40);
 	phoneEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 	phoneEdit->setPlaceholderText("手机号");
 	phoneEdit->setStyleSheet(editStyle);
 
 	// 5. 创建验证码输入框
-	QLineEdit* verifyCodeEdit = new QLineEdit();
+	verifyCodeEdit = new QLineEdit();
 	verifyCodeEdit->setFixedHeight(40);
 	verifyCodeEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 	verifyCodeEdit->setPlaceholderText("短信验证码");
 	verifyCodeEdit->setStyleSheet(editStyle);
 
 	// 6. 创建发送验证码按钮
-	QPushButton* sendVerifyCodeBtn = new QPushButton();
+	sendVerifyCodeBtn = new QPushButton();
 	sendVerifyCodeBtn->setText("发送验证码");
 	sendVerifyCodeBtn->setFixedSize(100, 40);
 	QString btnModeStyle = "QPushButton { border: none; border-radius: 10px; background-color: transparent }";
@@ -55,7 +58,7 @@ PhoneLoginWidegt::PhoneLoginWidegt(QWidget *parent)
 	sendVerifyCodeBtn->setStyleSheet(btnModeStyle);
 
 	// 7. 创建提交按钮
-	QPushButton* submitBtn = new QPushButton();
+	submitBtn = new QPushButton();
 	submitBtn->setText("登录");
 	submitBtn->setFixedHeight(40);
 	submitBtn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
@@ -110,7 +113,87 @@ PhoneLoginWidegt::PhoneLoginWidegt(QWidget *parent)
 		loginWidget->show();
 		this->close();
 	});
+
+	connect(sendVerifyCodeBtn, &QPushButton::clicked, this, &PhoneLoginWidegt::sendVerifyCode);
+
+	timer = new QTimer(this);
+	connect(timer, &QTimer::timeout, this, &PhoneLoginWidegt::countDone);
+
+	connect(submitBtn, &QPushButton::clicked, this, &PhoneLoginWidegt::clickSubmitBtn);
 }
 
 PhoneLoginWidegt::~PhoneLoginWidegt()
 {}
+
+void PhoneLoginWidegt::sendVerifyCode()
+{
+	const QString& phone = phoneEdit->text();
+	if (phone.size() != 11)
+	{
+		Toast::showMessage("手机号格式不合法");
+		return;
+	}
+	this->currentPhone = phone;
+	model::DataCenter* dataCenter = model::DataCenter::getInstance();
+	connect(dataCenter, &model::DataCenter::getVerifyCodeDone, this, &PhoneLoginWidegt::sendVerifyCodeDone, Qt::UniqueConnection);
+	dataCenter->getVerifyCodeAsync(phone);
+
+	timer->start(1000);
+}
+
+void PhoneLoginWidegt::sendVerifyCodeDone()
+{
+	Toast::showMessage("验证码已发送");
+}
+
+void PhoneLoginWidegt::countDone()
+{
+	if (leftTime <= 1)
+	{
+		sendVerifyCodeBtn->setEnabled(true);
+		sendVerifyCodeBtn->setText("发送验证码");
+		timer->stop();
+		leftTime = 30;
+		return;
+	}
+	leftTime -= 1;
+	sendVerifyCodeBtn->setText(QString::number(leftTime) + "s");
+	if (sendVerifyCodeBtn->isEnabled())
+	{
+		sendVerifyCodeBtn->setEnabled(false); 
+	}
+}
+
+void PhoneLoginWidegt::clickSubmitBtn()
+{
+	const QString& phone = currentPhone;
+	const QString verifyCode = verifyCodeEdit->text();
+	if (phone.isEmpty() || verifyCode.isEmpty())
+	{
+		Toast::showMessage("手机号/验证码不能为空");
+		return;
+	}
+
+	model::DataCenter* dataCenter = model::DataCenter::getInstance();
+	if (isLoginMode) // 登录
+	{
+		connect(dataCenter, &model::DataCenter::phoneLoginDone, this, &PhoneLoginWidegt::phoneLoginDone, Qt::UniqueConnection);
+		dataCenter->phoneLoginAsync(phone, verifyCode);
+	}
+	else // 注册
+	{
+
+	}
+}
+
+void PhoneLoginWidegt::phoneLoginDone(bool ok, const QString& reason)
+{
+	if (!ok)
+	{
+		Toast::showMessage("手机号登录失败:" + reason);
+		return;
+	}
+	MainWidget* mainWidget = MainWidget::getInstance();
+	mainWidget->show();
+	this->close();
+}

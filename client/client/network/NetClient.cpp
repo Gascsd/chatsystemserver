@@ -12,7 +12,8 @@ namespace network
 	NetClient::NetClient(model::DataCenter* dataCenter) 
 		: dataCenter(dataCenter)
 	{
-		initWebsocket();
+		// 不应该在这个环节初始化websocket，而是在构造MainWidget的时候初始化
+		// initWebsocket();
 	}
 	void NetClient::ping()
 	{
@@ -890,6 +891,104 @@ namespace network
 			emit dataCenter->searchMessageDone(); // 这是在发起一个信号
 
 			LOG() << "[按时间搜索历史消息] 处理响应完毕 requestId=" << req.requestId();
+			});
+	}
+
+	void NetClient::userLogin(const QString& username, const QString& password)
+	{
+		zht_im::UserLoginReq req;
+		req.setRequestId(makeRequestId());
+		req.setNickname(username);
+		req.setPassword(password);
+
+		QByteArray body = req.serialize(&serializer);
+		LOG() << "[用户名密码登录] 发送请求 requestId=" << req.requestId() << ", nickname=" << req.nickname()
+			<< ", password=" << req.password();
+
+		QNetworkReply* httpResp = sendHttpRequest("/service/user/username_login", body);
+
+		connect(httpResp, &QNetworkReply::finished, this, [=]() {
+			bool ok = false;
+			QString reason = "";
+			auto resp = handleHttpResponse<zht_im::UserLoginRsp>(httpResp, &ok, &reason);
+			if (!ok)
+			{
+				emit dataCenter->userLoginDone(false, reason);
+				LOG() << "[用户名密码登录] 出错, requestId=" << req.requestId() << ", reason = " << reason;
+				return;
+			}
+
+			dataCenter->resetLoginSessionId(resp->loginSessionId());
+
+			// 发送信号通知调用逻辑，已经处理完毕响应
+			emit dataCenter->userLoginDone(true, ""); // 这是在发起一个信号
+
+			LOG() << "[用户名密码登录] 处理响应完毕 requestId=" << req.requestId();
+			});
+	}
+
+	void NetClient::userRegister(const QString& username, const QString& password)
+	{
+		zht_im::UserRegisterReq req;
+		req.setRequestId(makeRequestId());
+		req.setNickname(username);
+		req.setPassword(password);
+
+		QByteArray body = req.serialize(&serializer);
+		LOG() << "[用户名密码注册] 发送请求 requestId=" << req.requestId() << ", nickname=" << req.nickname()
+			<< ", password=" << req.password();
+
+		QNetworkReply* httpResp = sendHttpRequest("/service/user/username_register", body);
+
+		connect(httpResp, &QNetworkReply::finished, this, [=]() {
+			bool ok = false;
+			QString reason = "";
+			auto resp = handleHttpResponse<zht_im::UserRegisterRsp>(httpResp, &ok, &reason);
+			if (!ok)
+			{
+				emit dataCenter->userRegisterDone(false, reason);
+				LOG() << "[用户名密码注册] 出错, requestId=" << req.requestId() << ", reason = " << reason;
+				return;
+			}
+
+			// 发送信号通知调用逻辑，已经处理完毕响应
+			emit dataCenter->userRegisterDone(true, ""); // 这是在发起一个信号
+
+			LOG() << "[用户名密码注册] 处理响应完毕 requestId=" << req.requestId();
+			});
+	}
+
+	void NetClient::phoneLogin(const QString& phone, const QString& verifyCodeId, const QString& verifyCode)
+	{
+		zht_im::PhoneLoginReq req;
+		req.setRequestId(makeRequestId());
+		req.setPhoneNumber(phone);
+		req.setVerifyCodeId(verifyCodeId);
+		req.setVerifyCode(verifyCode);
+
+		QByteArray body = req.serialize(&serializer);
+		LOG() << "[手机号登录] 发送请求 requestId=" << req.requestId() << ", verifyCodeId=" << req.verifyCodeId()
+			<< ", verifyCode=" << req.verifyCode();
+
+		QNetworkReply* httpResp = sendHttpRequest("/service/user/phone_login", body);
+
+		connect(httpResp, &QNetworkReply::finished, this, [=]() {
+			bool ok = false;
+			QString reason = "";
+			auto resp = handleHttpResponse<zht_im::PhoneLoginRsp>(httpResp, &ok, &reason);
+			if (!ok)
+			{
+				emit dataCenter->phoneLoginDone(false, reason);
+				LOG() << "[手机号登录] 出错, requestId=" << req.requestId() << ", reason = " << reason;
+				return;
+			}
+
+			dataCenter->resetLoginSessionId(resp->loginSessionId());
+
+			// 发送信号通知调用逻辑，已经处理完毕响应
+			emit dataCenter->phoneLoginDone(true, ""); // 这是在发起一个信号
+
+			LOG() << "[手机号登录] 处理响应完毕 requestId=" << req.requestId();
 			});
 	}
 

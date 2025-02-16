@@ -38,6 +38,7 @@ MainWidget::MainWidget(QWidget *parent)
     initMiddleWindow(); // 初始化中间窗口布局
     initRightWindow();  // 初始化右侧窗口布局
     initSignalSlot();   // 初始化信号槽
+    initWebsocket();    // 初始化websocket
 }
 
 MainWidget::~MainWidget() {}
@@ -162,7 +163,7 @@ void MainWidget::initMiddleWindow()
 }
 void MainWidget::initRightWindow()
 {
-    LOG() << "初始化右侧窗口";
+    //LOG() << "初始化右侧窗口";
     // 1. 创建右侧窗口的布局管理器
     QVBoxLayout* vlayout = new QVBoxLayout();
     vlayout->setSpacing(0);
@@ -201,14 +202,20 @@ void MainWidget::initRightWindow()
     hlayout->addWidget(extraBtn);
 
     // 4. 添加消息展示区 --宽度和高度都要自适应
-    LOG() << "添加消息展示区";
+    //LOG() << "添加消息展示区";
     messageShowArea = new MessageShowArea();
     vlayout->addWidget(messageShowArea);
 
     // 5. 添加消息编辑区 -- 宽度自适应,高度固定
-    LOG() << "添加消息编辑区";
+    //LOG() << "添加消息编辑区";
     messageEditArea = new MessageEditArea();
     vlayout->addWidget(messageEditArea, 0, Qt::AlignBottom);
+}
+
+void MainWidget::initWebsocket()
+{
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    dataCenter->initWebsocket();
 }
 
 void MainWidget::initSignalSlot()
@@ -404,7 +411,7 @@ void MainWidget::switchTableToApply()
 // 加载会话列表
 void MainWidget::loadSessionList()
 {
-    LOG() << "加载会话列表";
+    // LOG() << "加载会话列表";
     if (activeTab != SESSION_LIST) return;
 
     model::DataCenter* dataCenter = model::DataCenter::getInstance();
@@ -422,7 +429,7 @@ void MainWidget::loadSessionList()
 // 加载好友列表
 void MainWidget::loadFriendList()
 {
-    LOG() << "加载好友列表";
+    // LOG() << "加载好友列表";
     // 好友列表数据是在 DateCenter 中存储的
     // 判断其中是否有数据，如果有就直接加载，否则就从服务器获取
     model::DataCenter* dataCenter = model::DataCenter::getInstance();
@@ -440,7 +447,7 @@ void MainWidget::loadFriendList()
 // 加载申请列表
 void MainWidget:: loadApplyList()
 {
-    LOG() << "加载申请列表";
+    // LOG() << "加载申请列表";
     model::DataCenter* dataCenter = model::DataCenter::getInstance();
     if (dataCenter->getApplyList() != nullptr)// 从内存中获取
     {

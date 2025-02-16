@@ -99,6 +99,9 @@ public:
     void searchUser(const QString& loginSessionId, const QString& searchKey);
     void searchMessage(const QString& loginSessionId, const QString& chatSessionId, const QString& searchKey);
     void searchMessageByTime(const QString& loginSessionId, const QString& chatSessionId, const QDateTime& beginTime, const QDateTime& endTime);
+    void userLogin(const QString& username, const QString& password);
+    void userRegister(const QString& username, const QString& password);
+    void phoneLogin(const QString& phone, const QString& verifyCodeId, const QString& verifyCode);
 
 private:
     model::DataCenter* dataCenter;

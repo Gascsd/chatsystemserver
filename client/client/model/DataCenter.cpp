@@ -124,9 +124,15 @@ namespace model
 		return (*unreadMessageCount)[chatSessionId];
 	}
 
+	void DataCenter::initWebsocket()
+	{
+		LOG() << "调用netClient中的初始化webSocket";
+		netClient.initWebsocket();
+	}
+
 	void DataCenter::getMyselfAsync()
 	{
-		LOG() << "dataCenter 调用获取个人信息接口";
+		// LOG() << "dataCenter 调用获取个人信息接口";
 		// DataCenter 只是负责 "处理数据"， 真正访问网络进行通信，则是通过NetClient
 		netClient.getMyself(loginSessionId);
 	}
@@ -446,6 +452,21 @@ namespace model
 		}
 	}
 
+	void DataCenter::userLoginAsync(const QString& username, const QString& password)
+	{
+		netClient.userLogin(username, password);
+	}
+
+	void DataCenter::userRegisterAsync(const QString& username, const QString& password)
+	{
+		netClient.userRegister(username, password);
+	}
+
+	void DataCenter::phoneLoginAsync(const QString& phone, const QString& verifyCode)
+	{
+		netClient.phoneLogin(phone, currentVerifyCodeId, verifyCode);
+	}
+
 	void DataCenter::resetNickname(const QString& nickname)
 	{
 		if (myself == nullptr)
@@ -455,7 +476,13 @@ namespace model
 		myself->_nickname = nickname;
 	}
 
-    ChatSessionInfo *DataCenter::findChatSessionById(const QString &chatSessionId)
+	void DataCenter::resetLoginSessionId(const QString& loginSessionId)
+	{
+		this->loginSessionId = loginSessionId;
+		saveDataFile();
+	}
+
+	ChatSessionInfo *DataCenter::findChatSessionById(const QString &chatSessionId)
     {
         if(chatSessionList == nullptr)
             return nullptr;
