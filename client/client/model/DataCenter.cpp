@@ -391,6 +391,30 @@ namespace model
 		}
 	}
 
+	void DataCenter::searchUserAsync(const QString& searchKey)
+	{
+		netClient.searchUser(loginSessionId, searchKey);
+	}
+
+	QList<UserInfo>* DataCenter::getSearchUserResult()
+	{
+		return searchUserResult;
+	}
+
+	void DataCenter::resetSearchUserResult(const QList<zht_im::UserInfo>& userList)
+	{
+		if (searchUserResult == nullptr)
+			searchUserResult = new QList<UserInfo>();
+		searchUserResult->clear();
+
+		for (const auto& u : userList)
+		{
+			UserInfo userInfo;
+			userInfo.load(u);
+			searchUserResult->push_back(userInfo);
+		}
+	}
+
 	void DataCenter::resetNickname(const QString& nickname)
 	{
 		if (myself == nullptr)

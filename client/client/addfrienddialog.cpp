@@ -6,6 +6,7 @@
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QLabel>
+#include "model/DataCenter.h"
 #include "debug.h"
 
 
@@ -46,7 +47,7 @@ FriendResultItem::FriendResultItem(const UserInfo& userInfo)
 	descLabel->setText(userInfo._description);
 
 	// 6. 创建添加好友按钮
-	QPushButton* addBtn = new QPushButton();
+	addBtn = new QPushButton();
 	addBtn->setFixedSize(100, 50);
 	addBtn->setText("添加好友");
 	QString btnStyle = "QPushButton { border: none; background-color: rgb(127, 217, 97); border-radius: 10px }";
@@ -58,6 +59,18 @@ FriendResultItem::FriendResultItem(const UserInfo& userInfo)
 	layout->addWidget(nameLabel, 0, 1);
 	layout->addWidget(descLabel, 1, 1);
 	layout->addWidget(addBtn, 0, 2, 2, 1);
+
+	// 8. 连接信号槽
+	connect(addBtn, &QPushButton::clicked, this, &FriendResultItem::clickAddBtn);
+}
+
+void FriendResultItem::clickAddBtn()
+{
+	model::DataCenter* dataCenter = model::DataCenter::getInstance();
+	dataCenter->addFriendApplyAsync(userInfo._userId);
+	addBtn->setEnabled(false);
+	addBtn->setText("已申请");
+	addBtn->setStyleSheet("QPushButton { border: none; color: rgb(255, 255, 255); background-color: rgb(200, 200, 200); border-radius: 10px; }");
 }
 
 
@@ -117,6 +130,9 @@ AddFriendDialog::AddFriendDialog(QWidget *parent)
 	}
 #endif // TEST_UI
 
+
+	// 6. 连接信号槽
+	connect(searchBtn, &QPushButton::clicked, this, &AddFriendDialog::clickSearchBtn);
 }
 
 AddFriendDialog::~AddFriendDialog()
@@ -168,6 +184,33 @@ void AddFriendDialog::clear()
 void AddFriendDialog::setSearchKey(const QString& searchkey)
 {
 	searchEdit->setText(searchkey);
+}
+
+void AddFriendDialog::clickSearchBtn()
+{
+	const QString& text = searchEdit->text();
+	if (text.isEmpty())
+	{
+		return;
+	}
+	model::DataCenter* dataCenter = model::DataCenter::getInstance();
+	connect(dataCenter, &model::DataCenter::searchUserDone, this, &AddFriendDialog::clickSearchBtnDone, Qt::UniqueConnection);
+	dataCenter->searchUserAsync(text);
+}
+
+void AddFriendDialog::clickSearchBtnDone()
+{
+	// 1. 拿到 DataCenter 中的搜索结果
+	model::DataCenter* dataCenter = model::DataCenter::getInstance();
+	QList<UserInfo>* searchResult = dataCenter->getSearchUserResult();
+	if (searchResult == nullptr)
+		return;
+
+	this->clear();
+	for (const auto& u : *searchResult)
+	{
+		this->addResult(u);
+	}
 }
 
 

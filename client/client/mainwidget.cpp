@@ -545,7 +545,7 @@ void MainWidget::updateRecentMessage(const QString &chatSessionId)
     model::ChatSessionInfo* chatSessionInfo = dataCenter->findChatSessionById(chatSessionId);
     if(chatSessionInfo != nullptr)
     {
-        LOG() << "设置会话标题=" << chatSessionInfo->_chatSessionName;
+        // LOG() << "设置会话标题=" << chatSessionInfo->_chatSessionName;
         if (sessionTitleLabel == nullptr)
         {
             LOG() << "重新创建了会话标题QLabel";

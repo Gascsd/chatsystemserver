@@ -113,15 +113,20 @@ namespace model
 		QList<UserInfo>* getMemberList(const QString& chatSessionId);
 		void resetMemberList(const QString& chatSessionId, const QList<zht_im::UserInfo>& memberList);
 
+		// 搜索用户
+		void searchUserAsync(const QString& searchKey);
+		QList<UserInfo>* getSearchUserResult();
+		void resetSearchUserResult(const QList<zht_im::UserInfo>& userList);
+
         //   ---------------辅助函数------------
         
-		ChatSessionInfo* findChatSessionById(const QString& chatSessionId);	// 根据会话ID查询会话信息
-		ChatSessionInfo* findChatSessionByUserId(const QString& userId);	// 根据用户Id查找
-		void topChatSessionInfo(const ChatSessionInfo& chatSessionInfo);	// 把指定会话信息放在头部
-        void setCurrentChatSessionId(const QString& chatSessionId);			// 获取/设置当前选中的会话
-        const QString& getCurrentChatSessionId();							// 获取/设置当前选中的会话
-        void addMessage(const Message& message);							// 添加消息到dataCenter
-		UserInfo* findFriendById(const QString& userId);					// 根据用户ID查询好友信息
+		ChatSessionInfo* findChatSessionById(const QString& chatSessionId);		// 根据会话ID查询会话信息
+		ChatSessionInfo* findChatSessionByUserId(const QString& userId);		// 根据用户Id查找
+		void topChatSessionInfo(const ChatSessionInfo& chatSessionInfo);		// 把指定会话信息放在头部
+        void setCurrentChatSessionId(const QString& chatSessionId);				// 获取/设置当前选中的会话
+        const QString& getCurrentChatSessionId();								// 获取/设置当前选中的会话
+        void addMessage(const Message& message);								// 添加消息到dataCenter
+		UserInfo* findFriendById(const QString& userId);						// 根据用户ID查询好友信息
 
 	signals:
 		//自定义信号
@@ -149,5 +154,6 @@ namespace model
 		void createGroupChatSessionDone();
 		void receiveSessionCreateDone();
 		void getMemberListDone(const QString& chatSessionId);
+		void searchUserDone();
 	};  
 } // namespace model

@@ -8,6 +8,7 @@
 UserInfoWidget::UserInfoWidget(QWidget *parent, const UserInfo &userInfo)
     : userInfo(userInfo), QDialog(parent)
 {
+    LOG() << parent << "----" << userInfo._userId << ":" << userInfo._nickname;
     // 1. 设置基本属性
     this->setFixedSize(400, 200);
     this->setWindowTitle("用户详情");
@@ -108,15 +109,21 @@ UserInfoWidget::UserInfoWidget(QWidget *parent, const UserInfo &userInfo)
     // ---判定依据就是拿着当前好友的userId，在 DataCenter 的好友列表中查询
     model::DataCenter* dataCenter = model::DataCenter::getInstance();
     UserInfo* myFriend = dataCenter->findFriendById(this->userInfo._userId);
-    if (myFriend == nullptr)
+    model::ChatSessionInfo* myFriendSession = dataCenter->findChatSessionByUserId(this->userInfo._userId);
+    if (myFriend == nullptr) // 不是好友
     {
         sendMessageBtn->setEnabled(false);
         deleteFriendBtn->setEnabled(false);
     }
-    else
+    else // 是好友
     {
         applyBtn->setEnabled(false);
+        if (myFriendSession->_chatSessionId == dataCenter->getCurrentChatSessionId())
+        {
+            sendMessageBtn->setEnabled(false); // 当前选中的会话ID就是这个好友的会话
+        }
     }
+    
     // 10. 初始化信号槽
     initSignalSlot();
 }
@@ -126,18 +133,11 @@ void UserInfoWidget::initSignalSlot()
     connect(sendMessageBtn, &QPushButton::clicked, this, [=]() {
         MainWidget* mainWidget = MainWidget::getInstance();
         mainWidget->switchSession(userInfo._userId);
-        if (this->parent() == MainWidget::getInstance())
+        this->close();
+        if (this->parent() != mainWidget)
         {
-            // 如果是从消息展示区点击弹出的用户详情窗口，就只关闭本窗口
-            this->close();
-        }
-        else
-        {
-            // 如果是从会话详情中点击的，就需要同时关闭会话详情窗口
-            LOG() << "从会话详情中点击的";
-            this->close();
-            auto parent = dynamic_cast<SessionDetailWidget*>(this->parent());
-            parent->close();
+            LOG() << "不是从主窗口调出的本窗口，关闭上层窗口";
+            dynamic_cast<QWidget*>(this->parent())->close();
         }
         });
     connect(deleteFriendBtn, &QPushButton::clicked, this, &UserInfoWidget::clickDeleteFriendBtn);

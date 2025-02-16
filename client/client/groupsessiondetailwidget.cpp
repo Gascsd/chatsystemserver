@@ -50,7 +50,7 @@ GroupSessionDetailWidget::GroupSessionDetailWidget(QWidget *parent)
 	vlayout->addWidget(scrollArea);
 
 	// 4. 添加 “添加” 按钮
-	AvatarItem* addBtn = new AvatarItem(QIcon(":/resource/image/cross.png"), "添加", "");
+	AvatarItem* addBtn = new AvatarItem(QIcon(":/resource/image/cross.png"), "添加", "", nullptr);
 	glayout->addWidget(addBtn, 0, 0);
 
 	// 5. 添加 群聊名称 标志
@@ -104,7 +104,9 @@ GroupSessionDetailWidget::GroupSessionDetailWidget(QWidget *parent)
 	}
 #endif // TEST_UI
 
-	// 8. 从服务器加载数据
+	// 8. 连接信号槽
+
+	// 9. 从服务器加载数据
 	initData();
 }
 
@@ -138,7 +140,7 @@ void GroupSessionDetailWidget::initMembers(const QString& chatSessionId)
 	}
 	for (const auto& u : *memberList)
 	{
-		AvatarItem* avatarItem = new AvatarItem(u._avatar, u._nickname, u._userId);
+		AvatarItem* avatarItem = new AvatarItem(u._avatar, u._nickname, u._userId, this);
 		addMember(avatarItem);
 	}
 	MainWidget* mainWidget = MainWidget::getInstance();

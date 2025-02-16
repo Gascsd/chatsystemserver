@@ -8,8 +8,8 @@
 #include "userinfowidget.h"
 #include "model/DataCenter.h"
 
-AvatarItem::AvatarItem(const QIcon &avatar, const QString &name, const QString& userId)
-    : userId(userId)
+AvatarItem::AvatarItem(const QIcon &avatar, const QString &name, const QString& userId, QWidget* parent)
+    : userId(userId), QWidget(parent)
 {
     // 1. 设置基本属性
     this->setFixedSize(70, 80);
@@ -51,12 +51,12 @@ AvatarItem::AvatarItem(const QIcon &avatar, const QString &name, const QString& 
     else
     {
         nameLabel->setText(name);
-    }
+    } 
     layout->addWidget(avatarBtn);
     layout->addWidget(nameLabel);
 
     // 连接信号槽，弹出用户详情窗口
-    connect(avatarBtn, &QPushButton::clicked, this, &AvatarItem::clickUserItem, Qt::UniqueConnection);
+    connect(avatarBtn, &QPushButton::clicked, this, &AvatarItem::clickUserItem);
 }
 
 void AvatarItem::clickUserItem()
@@ -69,13 +69,14 @@ void AvatarItem::clickUserItem()
         LOG() << "没有查找到指定好友";
         return;
     }
-    UserInfoWidget* userInfoWidget = new UserInfoWidget(mainWidget, *friendInfo);
+    UserInfoWidget* userInfoWidget = new UserInfoWidget(dynamic_cast<QWidget*>(this->parent()), *friendInfo);
     userInfoWidget->exec();
+    // dynamic_cast<SessionDetailWidget*>(this->parent())->close();
 }
 
 
 SessionDetailWidget::SessionDetailWidget(QWidget *parent, const model::UserInfo& userInfo)
-    : userInfo(userInfo)
+    : userInfo(userInfo), QDialog(parent)
 {
     // 1. 设置基本属性
     this->setWindowTitle("会话详情");
@@ -96,7 +97,7 @@ SessionDetailWidget::SessionDetailWidget(QWidget *parent, const model::UserInfo&
     this->setLayout(layout);
 
     // 3. 添加 创建群聊 按钮
-    AvatarItem* creatrGroupBtn = new AvatarItem(QIcon(":/resource/image/cross.png"), "添加", "");
+    AvatarItem* creatrGroupBtn = new AvatarItem(QIcon(":/resource/image/cross.png"), "添加", "", nullptr);
     layout->addWidget(creatrGroupBtn, 0, 0);
 
     // 4. 添加当前用户信息 （临时构造的假数据）
@@ -104,7 +105,7 @@ SessionDetailWidget::SessionDetailWidget(QWidget *parent, const model::UserInfo&
     AvatarItem* currentUser = new AvatarItem(QIcon(":/resource/image/defaultAvatar.png"), "张三123456");
     layout->addWidget(currentUser, 0, 1);
 #endif
-    AvatarItem* currentUser = new AvatarItem(userInfo._avatar, userInfo._nickname, userInfo._userId);
+    AvatarItem* currentUser = new AvatarItem(userInfo._avatar, userInfo._nickname, userInfo._userId, this);
     layout->addWidget(currentUser, 0, 1);
 
 

@@ -794,4 +794,36 @@ namespace network
 			});
 	}
 
+	void NetClient::searchUser(const QString& loginSessionId, const QString& searchKey)
+	{
+		zht_im::FriendSearchReq req;
+		req.setRequestId(makeRequestId());
+		req.setSessionId(loginSessionId);
+		req.setSearchKey(searchKey);
+
+		QByteArray body = req.serialize(&serializer);
+		LOG() << "[搜索用户] 发送请求 requestId=" << req.requestId() << ", loginSessionId=" << req.sessionId()
+			<< ", searchKey=" << req.searchKey();
+
+		QNetworkReply* httpResp = sendHttpRequest("/service/friend/search_friend", body);
+
+		connect(httpResp, &QNetworkReply::finished, this, [=]() {
+			bool ok = false;
+			QString reason = "";
+			auto resp = handleHttpResponse<zht_im::FriendSearchRsp>(httpResp, &ok, &reason);
+			if (!ok)
+			{
+				LOG() << "[搜索用户] 出错, requestId=" << req.requestId() << ", reason = " << reason;
+				return;
+			}
+
+			dataCenter->resetSearchUserResult(resp->userInfo());
+
+			// 发送信号通知调用逻辑，已经处理完毕响应
+			emit dataCenter->searchUserDone(); // 这是在发起一个信号
+
+			LOG() << "[搜索用户] 处理响应完毕 requestId=" << req.requestId();
+			});
+	}
+
 } // namespace network

@@ -12,7 +12,7 @@ class AvatarItem : public QWidget
 {
     Q_OBJECT
 public:
-    AvatarItem(const QIcon& avatar, const QString& name, const QString& userId);
+    AvatarItem(const QIcon& avatar, const QString& name, const QString& userId, QWidget* parent);
     QPushButton* getAvatar()
     {
         return avatarBtn;

@@ -96,6 +96,7 @@ public:
     void rejectFriendApply(const QString& loginSessionId, const QString& userId);
     void createGroupChatSession(const QString& loginSessionId, const QList<QString>& userIdList);
     void getMemberList(const QString& loginSessionId, const QString& chatSessionId);
+    void searchUser(const QString& loginSessionId, const QString& searchKey);
 
 private:
     model::DataCenter* dataCenter;
