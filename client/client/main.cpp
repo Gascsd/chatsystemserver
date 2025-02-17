@@ -7,10 +7,26 @@
 #include "model/DataCenter.h"
 #include "SoundRecorder.h"
 
+FILE* output = nullptr;
+
+void msgHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg)
+{
+    (void)type;
+    (void)context;
+    QByteArray log = msg.toUtf8();
+    fprintf(output, "%s\n", log.constData());
+    fflush(output); // 确保数据写入磁盘
+}
+
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
-    SoundRecorder* s = SoundRecorder::getInstance();
+
+#if DEPOLY
+    output = fopen("./log.txt", "a"); 
+    qInstallMessageHandler(msgHandler);
+#endif
+
 #if TEST_SKIP_LOGIN
     MainWidget* w = MainWidget::getInstance();
     w->show();
