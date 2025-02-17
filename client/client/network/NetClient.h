@@ -80,7 +80,7 @@ public:
     void getChatSessionList(const QString& loginSessionId);
     void getApplyList(const QString& loginSessionId);
     void getRecentMessagesList(const QString& loginSessionId, const QString& chatSessionId, bool updateUI);
-    void setMessage(const QString &loginSessionId, const QString chatSessionId, model::MessageType messageType,
+    void sendMessage(const QString &loginSessionId, const QString chatSessionId, model::MessageType messageType,
                                const QByteArray &content, const QString extraInfo = "");
 
     void receiverMessage(const QString& chatSessionId);
@@ -102,6 +102,9 @@ public:
     void userLogin(const QString& username, const QString& password);
     void userRegister(const QString& username, const QString& password);
     void phoneLogin(const QString& phone, const QString& verifyCodeId, const QString& verifyCode);
+    void phoneRegister(const QString& phone, const QString& verifyCodeId, const QString& verifyCode);
+    void getSingleFile(const QString& loginSessionId, const QString& fileId);
+    void speechConvertText(const QString& loginSessionId, const QString& fileId, const QByteArray& content);
 
 private:
     model::DataCenter* dataCenter;

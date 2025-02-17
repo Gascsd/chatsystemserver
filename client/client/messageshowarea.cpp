@@ -4,14 +4,19 @@
 #include <QPainterPath>
 #include <QPushButton>
 #include <QTimer>
-#include <qlabel.h>
-#include <qscrollbar.h>
+#include <QLabel>
+#include <QScrollBar>
+#include <QFileDialog>
+#include <QMenu>
+#include <QAction>
 
 #include "debug.h"
 #include "utils.hpp"
 #include "userinfowidget.h"
 #include "mainwidget.h"
+#include "Toast.h"
 #include "model/DataCenter.h"
+#include "SoundRecorder.h"
 
 using namespace model;
 
@@ -151,13 +156,13 @@ MessageItem *MessageItem::makeMessageItem(bool isLeft, const Message &message)
         contentWidget = makeTextMessagtItem(isLeft, message._content);
         break;
     case IMAGE_TYPE:
-        contentWidget = makeImageMessagtItem();
+        contentWidget = makeImageMessagtItem(isLeft, message._fileId, message._content);
         break;
     case FILE_TYPE:
-        contentWidget = makeFileMessagtItem();
+        contentWidget = makeFileMessagtItem(isLeft, message._fileId, message._fileName, message._content);
         break;
     case SPEECH_TYPE:
-        contentWidget = makeSpeechMessagtItem();
+        contentWidget = makeSpeechMessagtItem(isLeft, message);
         break;
     default:
         LOG() << "错误的消息类型 MessageType=" << message._messageType;
@@ -197,27 +202,31 @@ MessageItem *MessageItem::makeMessageItem(bool isLeft, const Message &message)
 
 QWidget *MessageItem::makeTextMessagtItem(bool isLeft, const QString &text)
 {
-    MessageContentLabel* messageContentLabel = new MessageContentLabel(isLeft, text);
+    MessageContentLabel* messageContentLabel = new MessageContentLabel(isLeft, text, TEXT_TYPE, "", "", QByteArray());
     return messageContentLabel;
 }
 
-QWidget *MessageItem::makeImageMessagtItem()
+QWidget *MessageItem::makeImageMessagtItem(bool isLeft, const QString& fileId, const QByteArray& content)
 {
-    return nullptr;
+    MessageImageLabel* messageImageLabel = new MessageImageLabel(fileId, content, isLeft);
+    return messageImageLabel;
 }
 
-QWidget *MessageItem::makeFileMessagtItem()
+QWidget *MessageItem::makeFileMessagtItem(bool isLeft, const QString& fileId, const QString fileName, const QByteArray& content)
 {
-    return nullptr;
+    MessageContentLabel* messageContentLabel = new MessageContentLabel(isLeft, "[文件]" + fileName, FILE_TYPE, fileId, fileName, QByteArray());
+    return messageContentLabel;
 }
 
-QWidget *MessageItem::makeSpeechMessagtItem()
+QWidget *MessageItem::makeSpeechMessagtItem(bool isLeft, const Message& message)
 {
-    return nullptr;
+    MessageContentLabel* messageContentLabel = new MessageContentLabel(isLeft, "[语音]", message._messageType, message._fileId, "", QByteArray());
+    return messageContentLabel;
 }
 
-MessageContentLabel::MessageContentLabel(bool isLeft, const QString &text)
-    : isLeft(isLeft)
+MessageContentLabel::MessageContentLabel(bool isLeft, const QString& text, model::MessageType messageType, 
+    const QString& fileId, const QString& fileName, const QByteArray& content)
+    : isLeft(isLeft), messageType(messageType), fileId(fileId), fileName(fileName), content(content)
 {
     // 设置 SizePolicy
     this->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -232,6 +241,20 @@ MessageContentLabel::MessageContentLabel(bool isLeft, const QString &text)
     this->label->setAlignment(Qt::AlignVCenter | Qt::AlignLeft);
     this->label->setWordWrap(true); // 设置自动换行
     this->label->setStyleSheet("QLabel { padding: 0 10px; line-height: 1.2; background-color: transparent; } ");
+
+    if (messageType == model::TEXT_TYPE) return;
+
+    if (content.isEmpty())
+    {
+        DataCenter* dataCenter = DataCenter::getInstance();
+        connect(dataCenter, &DataCenter::getSingleFileDone, this, &MessageContentLabel::updateUI);
+        dataCenter->getSingleFileAsync(fileId);
+    }
+    else
+    {
+        // content不为空，说明这个数据已经有了，就直接把 表示加载状态的变量设为true
+        this->loadContentDone = true;
+    }
 }
 
 // 会在该控件被显示的时候自动调用
@@ -296,5 +319,176 @@ void MessageContentLabel::paintEvent(QPaintEvent *event)
 
         // 6. 重新设置父元素高度,确保父元素足够高,能够容纳下上述绘制消息区域的
         parent->setFixedHeight(height + 50);
+    }
+}
+
+void MessageContentLabel::mousePressEvent(QMouseEvent* event)
+{
+    // 鼠标点击之后，触发文件另存为
+    if (event->button() == Qt::LeftButton) // 左键按下文件消息
+    {
+        if (loadContentDone == false)
+        {
+            Toast::showMessage("数据尚未加载成功，请稍后重试");
+            return;
+        }
+        if (this->messageType == FILE_TYPE)
+        {
+            saveAsFile(this->fileName, this->content);
+        }
+        else if (this->messageType == SPEECH_TYPE) // 点击语音消息就播放
+        {
+            SoundRecorder* soundRecorder = SoundRecorder::getInstance();
+            this->label->setText("播放中...");
+            connect(soundRecorder, &SoundRecorder::soundPlayDone, this, &MessageContentLabel::playDone, Qt::UniqueConnection);
+            soundRecorder->startPlay(this->content);
+        }
+        else
+        {
+            // 其他消息啥都不做
+        }
+    }
+}
+
+void MessageContentLabel::updateUI(const QString fileId, const QByteArray& content)
+{
+    if (fileId != this->fileId) return;
+    this->content = content;
+    this->loadContentDone = true;
+    this->update();
+}
+
+void MessageContentLabel::saveAsFile(const QString& fileName, const QByteArray& content)
+{
+    QString filePath = QFileDialog::getSaveFileName(this, "另存为", QDir::homePath(), "*");
+    if (filePath.isEmpty())
+    {
+        LOG() << "用户取消了文件另存为";
+        return;
+    }
+    writeByteArrayToFile(filePath, content);
+}
+
+void MessageContentLabel::playDone()
+{
+    if (this->label->text() == "播放中...")
+    {
+        this->label->setText("[语音]");
+    }
+}
+
+void MessageContentLabel::contextMenuEvent(QContextMenuEvent* event)
+{
+    if (messageType == SPEECH_TYPE)
+    {
+        QMenu* menu = new QMenu(this);
+        menu->setStyleSheet(
+            "QMenu::item {"
+            "padding: 8px 48px 8px 30px;" /* 内边距，左边距较大以留出图标空间 */
+            "border: 1px solid transparent;" /* 初始状态下无边框 */
+            "}"
+            "QMenu::icon {"
+            "left: 10px;" /* 图标与左侧的距离 */
+            "}"
+            "QMenu::separator {"
+            "height: 1px;" /* 分隔线的高度 */
+            "background: #393e46;" /* 分隔线的颜色 */
+            "margin-left: 10px;"
+            "margin-right: 10px;"
+            "}"
+        );
+        QAction* action = menu->addAction("语音转文字");
+        connect(action, &QAction::triggered, this, [=]() {
+            DataCenter* dataCenter = DataCenter::getInstance();
+            connect(dataCenter, &model::DataCenter::speechConvertTextDone, this, &MessageContentLabel::speechConvertTextDone, Qt::UniqueConnection);
+            dataCenter->speechConvertTextAsync(fileId, this->content);
+            });
+        menu->exec(event->globalPos());
+        delete menu;
+    }
+    else
+    {
+        // 其他类型的消息暂时不处理
+    }
+}
+
+void MessageContentLabel::speechConvertTextDone(const QString& fileId, const QString& text)
+{
+    if (this->fileId != fileId) return;
+    this->label->setText("[语音转文字]" + text);
+    this->update();
+}
+
+MessageImageLabel::MessageImageLabel(const QString& fileId, const QByteArray& content, bool isLeft)
+    : fileId(fileId), content(content), isLeft(isLeft)
+{
+    this->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    imageBtn = new QPushButton(this);
+    imageBtn->setStyleSheet("QPushButton { border: none; }");
+
+    if (content.isEmpty()) // 如果文件内容为空，那么就得从服务器获取图片内容
+    {
+        model::DataCenter* dataCenter = model::DataCenter::getInstance();
+        connect(dataCenter, &model::DataCenter::getSingleFileDone, this, &MessageImageLabel::updateUI);
+        dataCenter->getSingleFileAsync(fileId);
+    }
+}
+
+void MessageImageLabel::updateUI(const QString& fileId, const QByteArray& content)
+{
+    if (this->fileId != fileId) return;
+    this->content = content;
+    // 绘制到界面
+    this->update();
+}
+
+void MessageImageLabel::paintEvent(QPaintEvent* event)
+{
+    // 1. 先拿到该元素的父元素，判断父元素的宽度
+    QObject* object = this->parent();
+    if (!object->isWidgetType()) return;
+    QWidget* parent = dynamic_cast<QWidget*>(object);
+    int width = parent->width() * 0.6;
+    // LOG() << "绘制的图片宽度为:" << width;
+    // 2. 加载二进制数据为图片未向
+    QImage image;
+    if (content.isEmpty()) // 此时图片响应数据还没有回来，显示默认图片
+    {
+        QByteArray tmpContent = loadFileToByteArray(":/resource/image/image.png");
+        image.loadFromData(tmpContent);
+    }
+    else
+    {
+        image.loadFromData(content);
+    }
+    // 3. 针对图片进行缩放
+    int height = 0;
+    if (image.width() > width)
+    {
+        height = ((double)image.height() / image.width()) * width;
+    }
+    else
+    {
+        width = image.width();
+        height = image.height();
+    }
+    QPixmap pixmap = QPixmap::fromImage(image);
+    // imageBtn->setFixedSize(width, height);
+    imageBtn->setIconSize(QSize(width, height));
+    imageBtn->setIcon(QIcon(pixmap));
+
+    // 4. 设置父元素高度能够容纳当前元素
+    parent->setFixedHeight(height + 50);
+
+    // 5. 确定按钮所在的位置
+    if(isLeft)
+    {
+        imageBtn->setGeometry(10, 0, width, height);
+    }
+    else
+    {
+        int leftPos = this->width() - width - 10;
+        imageBtn->setGeometry(leftPos, 0, width, height);
     }
 }

@@ -4,6 +4,7 @@
 #include <QLineEdit>
 #include <QTimer>
 #include <QPushButton>
+#include <QLabel>
 
 class PhoneLoginWidegt  : public QWidget
 {
@@ -18,6 +19,8 @@ public:
 	void countDone();
 	void clickSubmitBtn();
 	void phoneLoginDone(bool ok, const QString& reason);
+	void phoneRegisterDone(bool ok, const QString& reason);
+	void switchMode();
 
 private:
 	bool isLoginMode = true;
@@ -28,4 +31,7 @@ private:
 	QPushButton* sendVerifyCodeBtn;
 	QPushButton* submitBtn;
 	QString currentPhone = "";
+	QLabel* titleLabel;
+	QPushButton* userModeBtn;
+	QPushButton* switchModeBtn;
 };

@@ -27,7 +27,7 @@ PhoneLoginWidegt::PhoneLoginWidegt(QWidget *parent)
 	this->setLayout(layout);
 
 	// 3. 创建标题
-	QLabel* titleLabel = new QLabel();
+	titleLabel = new QLabel();
 	titleLabel->setText("登录");
 	titleLabel->setAlignment(Qt::AlignCenter);
 	titleLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
@@ -67,13 +67,13 @@ PhoneLoginWidegt::PhoneLoginWidegt(QWidget *parent)
 	submitBtn->setStyleSheet(btnGreenStyle);
 
 	// 8. 创建切换到用户名密码登录按钮
-	QPushButton* userModeBtn = new QPushButton(this);
+	userModeBtn = new QPushButton(this);
 	userModeBtn->setText("用户名密码登录");
 	userModeBtn->setFixedSize(100, 40);
 	userModeBtn->setStyleSheet(btnModeStyle);
 
 	// 10. 创建切换到注册按钮
-	QPushButton* switchModeBtn = new QPushButton();
+	switchModeBtn = new QPushButton();
 	switchModeBtn->setText("注册");
 	switchModeBtn->setFixedHeight(40);
 	switchModeBtn->setStyleSheet(btnModeStyle);
@@ -88,25 +88,7 @@ PhoneLoginWidegt::PhoneLoginWidegt(QWidget *parent)
 	layout->addWidget(switchModeBtn, 4, 4, 1, 1);
 
 	// 12. 添加信号槽
-	connect(switchModeBtn, &QPushButton::clicked, this, [=]() {
-		if (isLoginMode) // 切换到注册
-		{
-			this->setWindowTitle("注册");
-			titleLabel->setText("注册");
-			submitBtn->setText("注册");
-			userModeBtn->setText("用户名密码注册");
-			switchModeBtn->setTabletTracking("登录");
-		}
-		else
-		{
-			this->setWindowTitle("登录");
-			titleLabel->setText("登录");
-			submitBtn->setText("登录");
-			userModeBtn->setText("手机号登录");
-			switchModeBtn->setTabletTracking("注册");
-		}
-		isLoginMode = !isLoginMode;
-	});
+	connect(switchModeBtn, &QPushButton::clicked, this, &PhoneLoginWidegt::switchMode);
 
 	connect(userModeBtn, &QPushButton::clicked, this, [=]() {
 		LoginWidget* loginWidget = new LoginWidget(nullptr);
@@ -182,7 +164,8 @@ void PhoneLoginWidegt::clickSubmitBtn()
 	}
 	else // 注册
 	{
-
+		connect(dataCenter, &model::DataCenter::phoneRegisterDone, this, &PhoneLoginWidegt::phoneRegisterDone, Qt::UniqueConnection);
+		dataCenter->phoneRegisterAsync(phone, verifyCode);
 	}
 }
 
@@ -196,4 +179,39 @@ void PhoneLoginWidegt::phoneLoginDone(bool ok, const QString& reason)
 	MainWidget* mainWidget = MainWidget::getInstance();
 	mainWidget->show();
 	this->close();
+}
+
+void PhoneLoginWidegt::phoneRegisterDone(bool ok, const QString& reason)
+{
+	if (!ok)
+	{
+		Toast::showMessage("注册失败:" + reason);
+		return;
+	}
+	Toast::showMessage("注册成功:" + reason);
+	switchMode();
+}
+
+void PhoneLoginWidegt::switchMode()
+{
+	if (isLoginMode) // 切换到注册
+	{
+		this->setWindowTitle("注册");
+		titleLabel->setText("注册");
+		submitBtn->setText("注册");
+		userModeBtn->setText("用户名密码注册");
+		switchModeBtn->setTabletTracking("登录");
+	}
+	else
+	{
+		this->setWindowTitle("登录");
+		titleLabel->setText("登录");
+		submitBtn->setText("登录");
+		userModeBtn->setText("手机号登录");
+		switchModeBtn->setTabletTracking("注册");
+	}
+	isLoginMode = !isLoginMode;
+	verifyCodeEdit->clear();
+	phoneEdit->clear();
+	leftTime = 1;
 }

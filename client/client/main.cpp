@@ -5,11 +5,12 @@
 #include "LoginWidget.h"
 #include "debug.h"
 #include "model/DataCenter.h"
+#include "SoundRecorder.h"
 
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
-
+    SoundRecorder* s = SoundRecorder::getInstance();
 #if TEST_SKIP_LOGIN
     MainWidget* w = MainWidget::getInstance();
     w->show();

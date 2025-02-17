@@ -4,7 +4,7 @@
 #include <QLabel>
 #include <QScrollArea>
 #include <QWidget>
-
+#include <QPushButton>
 #include "model/data.h"
 
 using model::Message;
@@ -41,9 +41,9 @@ public:
     static MessageItem* makeMessageItem(bool isLeft, const Message& message);
 
     static QWidget* makeTextMessagtItem(bool isLeft, const QString& text);
-    static QWidget* makeImageMessagtItem();
-    static QWidget* makeFileMessagtItem();
-    static QWidget* makeSpeechMessagtItem();
+    static QWidget* makeImageMessagtItem(bool isLeft, const QString& fileId, const QByteArray& content);
+    static QWidget* makeFileMessagtItem(bool isLeft, const QString& fileId, const QString fileName, const QByteArray& content);
+    static QWidget* makeSpeechMessagtItem(bool isLeft, const Message& message);
 
 private:
     bool isLeft;
@@ -51,17 +51,53 @@ private:
 
 
 /**
- * 创建类表示"文本消息"正文部分
+ * 创建类表示"文本/文件消息"正文部分
  */
 class MessageContentLabel : public QWidget
 {
+    Q_OBJECT
 public:
-    MessageContentLabel(bool isLeft, const QString& text);
+    MessageContentLabel(bool isLeft, const QString& text, model::MessageType messageType, 
+        const QString& fileId, const QString &fileName, const QByteArray &content);
 
     void paintEvent(QPaintEvent* event) override;
+    void mousePressEvent(QMouseEvent* event) override;
+    
+    void updateUI(const QString fileId, const QByteArray& content);
+    void saveAsFile(const QString& fileName, const QByteArray& content);
+    void playDone();
+
+    void contextMenuEvent(QContextMenuEvent* event) override;
+    void speechConvertTextDone(const QString& fileId, const QString& text);
 
 private:
     QLabel* label;
+    bool isLeft;
+
+    model::MessageType messageType;
+    QString fileId;
+    QByteArray content;
+    QString fileName;
+
+    bool loadContentDone = false; // 判断文件是否加载完毕
+};
+
+/**
+* 创建类表示“图潘消息”正文部分
+*/
+class MessageImageLabel : public QWidget
+{
+    Q_OBJECT
+public:
+    MessageImageLabel(const QString& fileId, const QByteArray& content, bool isLeft);
+    void updateUI(const QString& fileId, const QByteArray& content);
+    void paintEvent(QPaintEvent* event) override;
+
+private:
+
+    QPushButton* imageBtn;
+    QString fileId;             // 该图片在服务器上对应的文件ID
+    QByteArray content;         // 图片的二进制数据
     bool isLeft;
 };
 

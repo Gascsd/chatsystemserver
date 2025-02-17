@@ -393,12 +393,12 @@ QHttpServerResponse HttpServer::getRecent(const QHttpServerRequest& req) {
         zht_im::MessageInfo messageInfo = makeTextMessageInfo(i, "2000", avatar);
         pbResp.msgList().push_back(messageInfo);
     }
-    // zht_im::MessageInfo imageMessageInfo = makeImageMessageInfo(30, "2000", avatar);
-    // pbResp.msgList().push_back(imageMessageInfo);
-    // zht_im::MessageInfo fileMessageInfo = makeFileMessageInfo(31, "2000", avatar);
-    // pbResp.msgList().push_back(fileMessageInfo);
-    // zht_im::MessageInfo speechMessageInfo = makeSpeechMessageInfo(32, "2000", avatar);
-    // pbResp.msgList().push_back(speechMessageInfo);
+     zht_im::MessageInfo imageMessageInfo = makeImageMessageInfo(30, "2000", avatar);
+     pbResp.msgList().push_back(imageMessageInfo);
+     zht_im::MessageInfo fileMessageInfo = makeFileMessageInfo(31, "2000", avatar);
+     pbResp.msgList().push_back(fileMessageInfo);
+     zht_im::MessageInfo speechMessageInfo = makeSpeechMessageInfo(32, "2000", avatar);
+     pbResp.msgList().push_back(speechMessageInfo);
 
     // 序列化
     QByteArray body = pbResp.serialize(&serializer);

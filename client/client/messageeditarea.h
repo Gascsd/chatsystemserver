@@ -4,6 +4,7 @@
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QWidget>
+#include <QLabel>
 #include "model/data.h"
 class MessageEditArea : public QWidget
 {
@@ -16,6 +17,13 @@ public:
     void addSelfMessage(model::MessageType messageType, const QByteArray &content, const QString &extraInfo);
     void addOtherMessage(const model::Message& message);
 
+    void clickSendImageBtn();
+    void clickSendFileBtn();
+
+    void soundRecordPressed();
+    void soundRecordReleased();
+    void sendSpeech(const QString& path);
+
 private:
     QPushButton* sendImageBtn;
     QPushButton* sendFileBtn;
@@ -23,6 +31,8 @@ private:
     QPushButton* showHistoryBtn;
     QPlainTextEdit* textEdit;
     QPushButton* sendTextBtn;
+
+    QLabel* tipLabel;
 
 signals:
 };

@@ -2,10 +2,11 @@
 
 #include <QHBoxLayout>
 #include <QScrollBar>
-
+#include <QFileDialog>
 #include "historymessagewidget.h"
 #include "mainwidget.h"
 #include "model/DataCenter.h"
+#include "SoundRecorder.h"
 #include "Toast.h"
 
 MessageEditArea::MessageEditArea(QWidget *parent) : QWidget{parent}
@@ -65,7 +66,16 @@ MessageEditArea::MessageEditArea(QWidget *parent) : QWidget{parent}
     textEdit->verticalScrollBar()->setStyleSheet("QScrollBar:vertical { width: 2px; background-color: rgb(45, 45, 45)}");
     vlayout->addWidget(textEdit);
 
-    // 6. 添加发送文本消息的按钮
+    // 6. 添加提示 : 录制中
+    tipLabel = new QLabel();
+    tipLabel->setText("录制中");
+    tipLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    tipLabel->setAlignment(Qt::AlignCenter);
+    tipLabel->setFont(QFont("微软雅黑", 34, 600));
+    vlayout->addWidget(tipLabel);
+    tipLabel->hide();
+
+    // 7. 添加发送文本消息的按钮
     sendTextBtn = new QPushButton();
     sendTextBtn->setText("发送");
     sendTextBtn->setFixedSize(120, 40);
@@ -75,7 +85,9 @@ MessageEditArea::MessageEditArea(QWidget *parent) : QWidget{parent}
     sendTextBtn->setStyleSheet(style);
     vlayout->addWidget(sendTextBtn, 0, Qt::AlignRight | Qt::AlignVCenter);
 
-    // 7. 统一初始化信号槽
+
+
+    // 8. 统一初始化信号槽
     initSignalSlot();
 }
 
@@ -95,7 +107,22 @@ void MessageEditArea::initSignalSlot()
     // 2. 关联发送文本消息
     connect(sendTextBtn, &QPushButton::clicked, this, &MessageEditArea::SendTextMessage);
     connect(dataCenter, &model::DataCenter::sendMessageDone, this, &MessageEditArea::addSelfMessage);
+
+    // 3. 关联收到消息信号槽
     connect(dataCenter, &model::DataCenter::receiveMessageDone, this, &MessageEditArea::addOtherMessage);
+
+    // 4. 关联 发送图片 信号槽
+    connect(sendImageBtn, &QPushButton::clicked, this, &MessageEditArea::clickSendImageBtn);
+
+    // 5. 关联 发送文件 信号槽
+    connect(sendFileBtn, &QPushButton::clicked, this, &MessageEditArea::clickSendFileBtn);
+
+    // 6. 关联 发送语音 信号槽
+    connect(sendSpeechBtn, &QPushButton::pressed, this, &MessageEditArea::soundRecordPressed);
+    connect(sendSpeechBtn, &QPushButton::released, this, &MessageEditArea::soundRecordReleased);
+    SoundRecorder* soundRecorder = SoundRecorder::getInstance();
+    connect(soundRecorder, &SoundRecorder::soundRecordDone, this, &MessageEditArea::sendSpeech);
+
 }
 
 void MessageEditArea::SendTextMessage()
@@ -172,6 +199,109 @@ void MessageEditArea::addOtherMessage(const model::Message& message)
     messageShowArea->addMessage(true, message);
     messageShowArea->scrollToEnd();
     Toast::showMessage("收到消息");
+}
+
+void MessageEditArea::clickSendImageBtn()
+{
+    // 1. 判断是否选中会话
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    if (dataCenter->getCurrentChatSessionId().isEmpty())
+    {
+        Toast::showMessage("当前没有选中任何会话，不能发送图片");
+        return;
+    }
+
+    // 2. 弹出文件选择对话框
+    QString filter = "Image Files (*.png *.jpg *.jpeg)";
+    QString imagePath = QFileDialog::getOpenFileName(this, "选择图片", QDir::homePath(), filter);
+    if (imagePath.isEmpty())
+    {
+        LOG() << "用户取消选择图片";
+        return;
+    }
+    // 3. 读取文件内容
+    QByteArray imageContent = loadFileToByteArray(imagePath);
+
+    // 4. 发送请求
+    dataCenter->sendImageMessageAsync(dataCenter->getCurrentChatSessionId(), imageContent);
+}
+
+void MessageEditArea::clickSendFileBtn()
+{
+    // 1. 判断是否选中会话
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    if (dataCenter->getCurrentChatSessionId().isEmpty())
+    {
+        Toast::showMessage("当前没有选中任何会话，不能发送图片");
+        return;
+    }
+    // 2. 弹出文件选择对话框
+    QString filter = "*";
+    QString path = QFileDialog::getOpenFileName(this, "选择文件", QDir::homePath(), filter);
+    if (path.isEmpty())
+    {
+        LOG() << "用户取消选择文件";
+        return;
+    }
+    // 3. 读取文件内容 -- 这里不考虑大文件的情况
+    QByteArray content = loadFileToByteArray(path);
+
+    // 4. 发送请求
+    QFileInfo fileInfo(path);
+    const QString fileName = fileInfo.fileName();
+    dataCenter->sendFileMessageAsync(dataCenter->getCurrentChatSessionId(), fileName, content);
+
+}
+
+void MessageEditArea::soundRecordPressed()
+{
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    if (dataCenter->getCurrentChatSessionId().isEmpty())
+    {
+        Toast::showMessage("当前没有选中任何会话，不能发送语音");
+        return;
+    }
+    sendSpeechBtn->setIcon(QIcon(":/resource/image/sound_active.png"));
+
+    // 开始录音
+    LOG() << "开始录音";
+    SoundRecorder* soundRecorder = SoundRecorder::getInstance();
+    soundRecorder->startRecord();
+
+    tipLabel->show();
+    textEdit->hide();
+}
+
+void MessageEditArea::soundRecordReleased()
+{
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    if (dataCenter->getCurrentChatSessionId().isEmpty())
+    {
+        Toast::showMessage("当前没有选中任何会话，不能发送语音");
+        return;
+    }
+    sendSpeechBtn->setIcon(QIcon(":/resource/image/sound.png"));
+
+    // 停止录制
+    LOG() << "停止录音";
+    SoundRecorder* soundRecorder = SoundRecorder::getInstance();
+    soundRecorder->stopRecord();
+
+    tipLabel->hide();
+    textEdit->show();
+}
+
+void MessageEditArea::sendSpeech(const QString& path)
+{
+    model::DataCenter* dataCenter = model::DataCenter::getInstance();
+    // 1. 读取语音文件内容
+    QByteArray content = loadFileToByteArray(path);
+    if (content.isEmpty())
+    {
+        LOG() << "语音文件加载失败";
+        return;
+    }
+    dataCenter->sendSpeechMessageAsync(dataCenter->getCurrentChatSessionId(), content);
 }
 
 

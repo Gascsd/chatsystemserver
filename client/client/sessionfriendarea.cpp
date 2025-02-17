@@ -266,7 +266,7 @@ void SessionItem::updateLastMessage(const QString &chatSessionId)
         return;
 
     const Message& lastMessage = messageList->back();
-    LOG() << "messageList中存放的最后一条消息为：" << lastMessage._content;
+    // LOG() << "messageList中存放的最后一条消息为：" << lastMessage._content;
     // 明确文本显示的内容
     if(lastMessage._messageType == model::TEXT_TYPE)
         text = lastMessage._content;

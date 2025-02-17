@@ -243,8 +243,23 @@ namespace model
 
     void DataCenter::sendTextMessageAsync(const QString &chatSessionId, const QString &content)
     {
-        netClient.setMessage(loginSessionId, chatSessionId, MessageType::TEXT_TYPE, content.toUtf8());
+        netClient.sendMessage(loginSessionId, chatSessionId, MessageType::TEXT_TYPE, content.toUtf8());
     }
+
+	void DataCenter::sendImageMessageAsync(const QString& chatSessionId, const QByteArray& content)
+	{
+		netClient.sendMessage(loginSessionId, chatSessionId, IMAGE_TYPE, content, "");
+	}
+
+	void DataCenter::sendFileMessageAsync(const QString& chatSessionId, const QString& fileId, const QByteArray& content)
+	{
+		netClient.sendMessage(loginSessionId, chatSessionId, FILE_TYPE, content, fileId);
+	}
+
+	void DataCenter::sendSpeechMessageAsync(const QString& chatSessionId, const QByteArray& content)
+	{
+		netClient.sendMessage(loginSessionId, chatSessionId, SPEECH_TYPE, content, "");
+	}
 
 	void DataCenter::changeNicknameAsync(const QString& nickname)
 	{
@@ -467,6 +482,21 @@ namespace model
 		netClient.phoneLogin(phone, currentVerifyCodeId, verifyCode);
 	}
 
+	void DataCenter::phoneRegisterAsync(const QString& phone, const QString& verifyCode)
+	{
+		netClient.phoneRegister(phone, currentVerifyCodeId, verifyCode);
+	}
+
+	void DataCenter::getSingleFileAsync(const QString& fileId)
+	{
+		netClient.getSingleFile(loginSessionId, fileId);
+	}
+
+	void DataCenter::speechConvertTextAsync(const QString& fileId, const QByteArray& content)
+	{
+		netClient.speechConvertText(loginSessionId, fileId, content);
+	}
+
 	void DataCenter::resetNickname(const QString& nickname)
 	{
 		if (myself == nullptr)
@@ -536,7 +566,7 @@ namespace model
     {
         QList<Message>& messageList = (*recentMessages)[message._chatSessionId];
         messageList.push_back(message);
-        LOG() << "把消息添加到dataCenter中，消息内容为:" << message._content;
+        // LOG() << "把消息添加到dataCenter中，消息内容为:" << message._content;
     }
 
 	UserInfo* DataCenter::findFriendById(const QString& userId)

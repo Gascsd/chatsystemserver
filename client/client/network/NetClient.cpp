@@ -353,7 +353,7 @@ namespace network
         });
     }
     // extraInfo可以传递扩展消息，尤其是文件消息的文件名
-    void NetClient::setMessage(const QString &loginSessionId, const QString chatSessionId, model::MessageType messageType,
+    void NetClient::sendMessage(const QString &loginSessionId, const QString chatSessionId, model::MessageType messageType,
                                const QByteArray &content, const QString extraInfo)
     {
         zht_im::NewMessageReq req;
@@ -989,6 +989,96 @@ namespace network
 			emit dataCenter->phoneLoginDone(true, ""); // 这是在发起一个信号
 
 			LOG() << "[手机号登录] 处理响应完毕 requestId=" << req.requestId();
+			});
+	}
+
+	void NetClient::phoneRegister(const QString& phone, const QString& verifyCodeId, const QString& verifyCode)
+	{
+		zht_im::PhoneRegisterReq req;
+		req.setRequestId(makeRequestId());
+		req.setPhoneNumber(phone);
+		req.setVerifyCodeId(verifyCodeId);
+		req.setVerifyCode(verifyCode);
+
+		QByteArray body = req.serialize(&serializer);
+		LOG() << "[手机号注册] 发送请求 requestId=" << req.requestId() << ", verifyCodeId=" << req.verifyCodeId()
+			<< ", verifyCode=" << req.verifyCode();
+
+		QNetworkReply* httpResp = sendHttpRequest("/service/user/phone_register", body);
+
+		connect(httpResp, &QNetworkReply::finished, this, [=]() {
+			bool ok = false;
+			QString reason = "";
+			auto resp = handleHttpResponse<zht_im::PhoneRegisterRsp>(httpResp, &ok, &reason);
+			if (!ok)
+			{
+				emit dataCenter->phoneRegisterDone(false, reason);
+				LOG() << "[手机号注册] 出错, requestId=" << req.requestId() << ", reason = " << reason;
+				return;
+			}
+
+			// 发送信号通知调用逻辑，已经处理完毕响应
+			emit dataCenter->phoneRegisterDone(true, ""); // 这是在发起一个信号
+
+			LOG() << "[手机号注册] 处理响应完毕 requestId=" << req.requestId();
+			});
+	}
+
+	void NetClient::getSingleFile(const QString& loginSessionId, const QString& fileId)
+	{
+		zht_im::GetSingleFileReq req;
+		req.setRequestId(makeRequestId());
+		req.setSessionId(loginSessionId);
+		req.setFileId(fileId);
+
+		QByteArray body = req.serialize(&serializer);
+		LOG() << "[获取单个文件] 发送请求 requestId=" << req.requestId() << ", fileId=" << req.fileId();
+
+		QNetworkReply* httpResp = sendHttpRequest("/service/file/get_single_file", body);
+
+		connect(httpResp, &QNetworkReply::finished, this, [=]() {
+			bool ok = false;
+			QString reason = "";
+			auto resp = handleHttpResponse<zht_im::GetSingleFileRsp>(httpResp, &ok, &reason);
+			if (!ok)
+			{
+				LOG() << "[获取单个文件] 出错, requestId=" << req.requestId() << ", reason = " << reason;
+				return;
+			}
+
+			// 发送信号通知调用逻辑，已经处理完毕响应
+			emit dataCenter->getSingleFileDone(fileId, resp->fileData().fileContent()); // 这是在发起一个信号
+
+			LOG() << "[获取单个文件] 处理响应完毕 requestId=" << req.requestId();
+			});
+	}
+
+	void NetClient::speechConvertText(const QString& loginSessionId, const QString& fileId, const QByteArray& content)
+	{
+		zht_im::SpeechRecognitionReq req;
+		req.setRequestId(makeRequestId());
+		req.setSessionId(loginSessionId);
+		req.setSpeechContent(content);
+
+		QByteArray body = req.serialize(&serializer);
+		LOG() << "[语音转文字] 发送请求 requestId=" << req.requestId() << ", fileId=" << fileId;
+
+		QNetworkReply* httpResp = sendHttpRequest("/service/speech/recognition", body);
+
+		connect(httpResp, &QNetworkReply::finished, this, [=]() {
+			bool ok = false;
+			QString reason = "";
+			auto resp = handleHttpResponse<zht_im::SpeechRecognitionRsp>(httpResp, &ok, &reason);
+			if (!ok)
+			{
+				LOG() << "[语音转文字] 出错, requestId=" << req.requestId() << ", reason = " << reason;
+				return;
+			}
+
+			// 发送信号通知调用逻辑，已经处理完毕响应
+			emit dataCenter->speechConvertTextDone(fileId, resp->recognitionResult()); // 这是在发起一个信号
+
+			LOG() << "[语音转文字] 处理响应完毕 requestId=" << req.requestId();
 			});
 	}
 

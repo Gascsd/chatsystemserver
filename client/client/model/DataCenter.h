@@ -70,6 +70,9 @@ namespace model
 
         // 发送消息给服务器
 		void sendTextMessageAsync(const QString& chatSessionId, const QString &content);
+		void sendImageMessageAsync(const QString& chatSessionId, const QByteArray& content);
+		void sendFileMessageAsync(const QString& chatSessionId, const QString& fileId, const QByteArray& content);
+		void sendSpeechMessageAsync(const QString& chatSessionId, const QByteArray& content);
 
 		// 修改用户昵称
 		void changeNicknameAsync(const QString& nickname);
@@ -129,6 +132,13 @@ namespace model
 		void userLoginAsync(const QString& username, const QString& password);
 		void userRegisterAsync(const QString& username, const QString& password);
 		void phoneLoginAsync(const QString& phone, const QString& verifyCode);
+		void phoneRegisterAsync(const QString& phone, const QString& verifyCode);
+
+		// 获取单个文件
+		void getSingleFileAsync(const QString& fileId);
+
+		// 语音转文字
+		void speechConvertTextAsync(const QString& fileId, const QByteArray& content);
 
         //   ---------------辅助函数------------
         
@@ -172,5 +182,8 @@ namespace model
 		void userLoginDone(bool ok, const QString& reason);
 		void userRegisterDone(bool ok, const QString& reason);
 		void phoneLoginDone(bool ok, const QString& reason);
+		void phoneRegisterDone(bool ok, const QString& reason);
+		void getSingleFileDone(const QString& fileId, const QByteArray& fileContent);
+		void speechConvertTextDone(const QString fileId, const QString& text);
 	};  
 } // namespace model
