@@ -9,10 +9,12 @@
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QVBoxLayout>
+#include <QFileDialog>
 
 #include "debug.h"
 #include "model/DataCenter.h"
 #include "Toast.h"
+#include "SoundRecorder.h"
 
 using namespace model;
 
@@ -47,11 +49,11 @@ HistoryItem* HistoryItem::makeHistoryItem(const Message& message)
 	QWidget* contentWidget = nullptr;
 	if (message._messageType == IMAGE_TYPE)
 	{
-
+		contentWidget = new ImageButton(message._fileId, message._content);
 	}
 	else if (message._messageType == FILE_TYPE)
 	{
-
+		contentWidget = new FileLabel(message._fileId, message._fileName);
 	}
 	else if (message._messageType == TEXT_TYPE)
 	{
@@ -64,7 +66,7 @@ HistoryItem* HistoryItem::makeHistoryItem(const Message& message)
 	}
 	else if (message._messageType == SPEECH_TYPE)
 	{
-
+		contentWidget = new SpeechLabel(message._fileId);
 	}
 	else
 	{
@@ -290,3 +292,117 @@ void HistoryMessageWidget::clickSearchBtnDone()
 	}
 }
 
+ImageButton::ImageButton(const QString& fileId, const QByteArray& content)
+	: fileId(fileId)
+{
+	this->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+	this->setStyleSheet("QPushButton { border: none; }");
+
+	if (!content.isEmpty()) // 直接显示
+	{
+		this->updateUI(fileId, content);
+	}
+	else // 通过网络获取
+	{
+		model::DataCenter* dataCenter = model::DataCenter::getInstance();
+		connect(dataCenter, &model::DataCenter::getSingleFileDone, this, &ImageButton::updateUI);
+		dataCenter->getSingleFileAsync(fileId);
+	}
+}
+
+void ImageButton::updateUI(const QString& fileId, const QByteArray& content)
+{
+	if (fileId != this->fileId) return;
+
+	// 如果图片尺寸太大，就要缩放
+	QImage image;
+
+	int width = image.width();
+	int height = image.height();
+	image.loadFromData(content);
+	if (image.width() >= 300)
+	{
+		width = 300;
+		height = ((double)image.height() / image.width()) * width;
+	}
+	this->resize(width, height);
+	this->setIconSize(QSize(width, height));
+	QPixmap pixmap = QPixmap::fromImage(image);
+	this->setIcon(pixmap);
+}
+
+FileLabel::FileLabel(const QString& fileId, const QString& fileName)
+	: fileId(fileId), fileName(fileName)
+{
+	this->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+	this->setText("[文件]" + fileName);
+	this->setWordWrap(true);
+	this->adjustSize();
+	this->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+
+	//if (!loadDone) // 理论上这个条件不会触发
+	//	return;
+	// 需要从网络加载数据
+	DataCenter* dataCenter = DataCenter::getInstance();
+	connect(dataCenter, &DataCenter::getSingleFileDone, this, &FileLabel::getContentDone);
+	dataCenter->getSingleFileAsync(this->fileId);
+}
+
+void FileLabel::getContentDone(const QString& fileId, const QByteArray& content)
+{
+	if (fileId != this->fileId)
+		return;
+	this->content = content;
+	this->loadDone = true;
+}
+
+void FileLabel::mousePressEvent(QMouseEvent* event)
+{
+	(void)event;
+	if (!this->loadDone)
+	{
+		Toast::showMessage("文件内容加载中，请稍后再试");
+		return;
+	}
+
+	QString filePath = QFileDialog::getSaveFileName(this, "另存为", QDir::homePath(), "*");
+	if (filePath.isEmpty())
+	{
+		LOG() << "用户取消了保存";
+		return;
+	}
+
+	writeByteArrayToFile(filePath, content);
+}
+
+SpeechLabel::SpeechLabel(const QString& fileId)
+	: fileId(fileId)
+{
+	this->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+	this->setText("[语音]");
+	this->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+
+	DataCenter* dataCenter = DataCenter::getInstance();
+	connect(dataCenter, &DataCenter::getSingleFileDone, this, &SpeechLabel::getContentDone);
+	dataCenter->getSingleFileAsync(this->fileId);
+}
+
+void SpeechLabel::getContentDone(const QString& fileId, const QByteArray& content)
+{
+	if (fileId != this->fileId)
+		return;
+	this->content = content;
+	this->loadDone = true;
+}
+
+void SpeechLabel::mousePressEvent(QMouseEvent* event)
+{
+	(void)event;
+	if (!this->loadDone)
+	{
+		Toast::showMessage("语音内容加载中，请稍后再试");
+		return;
+	}
+	SoundRecorder* soundRecorder = SoundRecorder::getInstance();
+	soundRecorder->startPlay(content);
+}

@@ -387,9 +387,6 @@ void MessageContentLabel::contextMenuEvent(QContextMenuEvent* event)
             "padding: 8px 48px 8px 30px;" /* 内边距，左边距较大以留出图标空间 */
             "border: 1px solid transparent;" /* 初始状态下无边框 */
             "}"
-            "QMenu::icon {"
-            "left: 10px;" /* 图标与左侧的距离 */
-            "}"
             "QMenu::separator {"
             "height: 1px;" /* 分隔线的高度 */
             "background: #393e46;" /* 分隔线的颜色 */
