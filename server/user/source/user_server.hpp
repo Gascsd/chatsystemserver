@@ -54,7 +54,9 @@ namespace zht_im
                 _file_service_name(file_service_name),
                 _dms_client(dms_client),
                 _mm_channels(mm_channels)
-            {}
+            {
+                _es_user->createIndex(); 
+            }
         ~UserServiceImpl() {}
         bool nickname_check(const std::string &nickname)
         {
@@ -184,7 +186,9 @@ namespace zht_im
             // 4. 构造会话 ID，生成会话键值对，向 redis 中添加会话信息以及登录标记信息
             std::string ssid = uuid();
             _redis_session->append(ssid, user->user_id());
-            // 5. 组织响应，返回生成的会话 ID
+            // 5. 添加用户登录信息
+            _redis_status->append(user->user_id());
+            // 6. 组织响应，返回生成的会话 ID
             response->set_request_id(rid);
             response->set_login_session_id(ssid);
             response->set_success(true);
@@ -352,7 +356,9 @@ namespace zht_im
             // 6. 构造会话 ID，生成会话键值对，向 redis 中添加会话信息以及登录标记信息
             std::string ssid = uuid();
             _redis_session->append(ssid, user->user_id());
-            // 7. 组织响应，返回生成的会话 ID
+            // 7. 添加用户登录信息
+            _redis_status->append(user->user_id());
+            // 8. 组织响应，返回生成的会话 ID
             response->set_request_id(rid);
             response->set_login_session_id(ssid);
             response->set_success(true);
@@ -460,7 +466,8 @@ namespace zht_im
             req.set_request_id(rid);
             for(auto& user : users)
             {
-                req.add_file_id_list(*user.avatar_id());
+                if(user.avatar_id())
+                    req.add_file_id_list(*user.avatar_id());
             }
 
             brpc::Controller cntl;

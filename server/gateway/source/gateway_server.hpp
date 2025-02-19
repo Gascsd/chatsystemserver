@@ -20,34 +20,34 @@
 
 namespace zht_im
 {
-#define GET_PHONE_VERIFY_CODE "/service/user/get_phone_verify_code"
-#define USERNAME_REGISTER "/service/user/username_register"
-#define USERNAME_LOGIN "/service/user/username_login"
-#define PHONE_REGISTER "/service/user/phone_register"
-#define PHONE_LOGIN "/service/user/phone_login"
-#define GET_USERINFO "/service/user/get_user_info"
-#define SET_USER_AVATAR "/service/user/set_avatar"
-#define SET_USER_NICKNAME "/service/user/set_nickname"
-#define SET_USER_DESC "/service/user/set_description"
-#define SET_USER_PHONE "/service/user/set_phone"
-#define FRIEND_GET_LIST "/service/friend/get_friend_list"
-#define FRIEND_APPLY "/service/friend/add_friend_apply"
-#define FRIEND_APPLY_PROCESS "/service/friend/add_friend_process"
-#define FRIEND_REMOVE "/service/friend/remove_friend"
-#define FRIEND_SEARCH "/service/friend/search_friend"
-#define FRIEND_GET_PENDING_EV "/service/friend/get_pending_friend_events"
-#define CSS_GET_LIST "/service/friend/get_chat_session_list"
-#define CSS_CREATE "/service/friend/create_chat_session"
-#define CSS_GET_MEMBER "/service/friend/get_chat_session_member"
-#define MSG_GET_RANGE "/service/message_storage/get_history"
-#define MSG_GET_RECENT "/service/message_storage/get_recent"
-#define MSG_KEY_SEARCH "/service/message_storage/search_history"
-#define NEW_MESSAGE "/service/message_transmit/new_message"
-#define FILE_GET_SINGLE "/service/file/get_single_file"
-#define FILE_GET_MULTI "/service/file/get_multi_file"
-#define FILE_PUT_SINGLE "/service/file/put_single_file"
-#define FILE_PUT_MULTI "/service/file/put_multi_file"
-#define SPEECH_RECOGNITION "/service/speech/recognition"
+#define GET_PHONE_VERIFY_CODE       "/service/user/get_phone_verify_code"
+#define USERNAME_REGISTER           "/service/user/username_register"
+#define USERNAME_LOGIN              "/service/user/username_login"
+#define PHONE_REGISTER              "/service/user/phone_register"
+#define PHONE_LOGIN                 "/service/user/phone_login"
+#define GET_USERINFO                "/service/user/get_user_info"
+#define SET_USER_AVATAR             "/service/user/set_avatar"
+#define SET_USER_NICKNAME           "/service/user/set_nickname"
+#define SET_USER_DESC               "/service/user/set_description"
+#define SET_USER_PHONE              "/service/user/set_phone"
+#define FRIEND_GET_LIST             "/service/friend/get_friend_list"
+#define FRIEND_APPLY                "/service/friend/add_friend_apply"
+#define FRIEND_APPLY_PROCESS        "/service/friend/add_friend_process"
+#define FRIEND_REMOVE               "/service/friend/remove_friend"
+#define FRIEND_SEARCH               "/service/friend/search_friend"
+#define FRIEND_GET_PENDING_EV       "/service/friend/get_pending_friend_events"
+#define CSS_GET_LIST                "/service/friend/get_chat_session_list"
+#define CSS_CREATE                  "/service/friend/create_chat_session"
+#define CSS_GET_MEMBER              "/service/friend/get_chat_session_member"
+#define MSG_GET_RANGE               "/service/message_storage/get_history"
+#define MSG_GET_RECENT              "/service/message_storage/get_recent"
+#define MSG_KEY_SEARCH              "/service/message_storage/search_history"
+#define NEW_MESSAGE                 "/service/message_transmit/new_message"
+#define FILE_GET_SINGLE             "/service/file/get_single_file"
+#define FILE_GET_MULTI              "/service/file/get_multi_file"
+#define FILE_PUT_SINGLE             "/service/file/put_single_file"
+#define FILE_PUT_MULTI              "/service/file/put_multi_file"
+#define SPEECH_RECOGNITION          "/service/speech/recognition"
     class GatewayServer
     {
     public:
@@ -71,7 +71,8 @@ namespace zht_im
               _message_service(message_service),
               _speech_service(speech_service),
               _transmite_service(transmite_service),
-              _friend_service(friend_service)
+              _friend_service(friend_service),
+              _connections(std::make_shared<Connection>())
         {
             _ws_server.set_access_channels(websocketpp::log::alevel::none);
             _ws_server.init_asio();
@@ -145,6 +146,13 @@ namespace zht_im
             _connections->remove(conn);
             LOG_DEBUG("{}-{}-{}长连接断开，清理缓存数据", ssid, uid, (uint64_t)conn.get());
         }
+        void keepAlive(server_t::connection_ptr conn)
+        {
+            if(!conn || conn->get_state() != websocketpp::session::state::value::open) 
+                return;
+            conn->ping("");
+            _ws_server.set_timer(60000, std::bind(&GatewayServer::keepAlive, this, conn));
+        }
         void onMessage(websocketpp::connection_hdl hdl, server_t::message_ptr msg)
         {
             // 收到第一条消息后，根据消息中的会话ID进行身份识别，将客户端长连接添加管理
@@ -172,6 +180,7 @@ namespace zht_im
             // 5. 会话信息存在则添加长连接管理
             _connections->insert(conn, *uid, ssid);
             LOG_DEBUG("新增长连接管理 {}-{}-{} ", ssid, *uid, (uint64_t)conn.get());
+            keepAlive(conn);
         }
         void GetPhoneVerifyCode(const httplib::Request &request, httplib::Response &response)
         {
@@ -723,7 +732,7 @@ namespace zht_im
                 return err_response("好友管理子服务调用失败");
             }
             // 4. 若业务处理成功 -- 且获取被申请方长连接成功，则向被申请放进行好友申请事件通知
-            auto conn = _connections->connection(*uid);
+            auto conn = _connections->connection(req.respondent_id());
             if (rsp.success() && conn)
             {
                 auto user_rsp = _GetUserInfo(req.request_id(), *uid);
@@ -783,18 +792,18 @@ namespace zht_im
             }
             if (rsp.success())
             {
-                auto process_conn = _connections->connection(*uid);
+                auto process_conn = _connections->connection(*uid); // 处理人的长连接
                 auto process_user_rsp = _GetUserInfo(req.request_id(), *uid);
                 if (!process_user_rsp)
                 {
-                    LOG_ERROR("{} 获取当前客户端用户信息失败 {}", req.request_id());
+                    LOG_ERROR("{} 获取当前客户端用户信息失败", req.request_id());
                     return err_response("获取当前客户端用户信息失败");
                 }
                 auto apply_conn = _connections->connection(req.apply_user_id());
                 auto apply_user_rsp = _GetUserInfo(req.request_id(), req.request_id());
                 if (!apply_user_rsp)
                 {
-                    LOG_ERROR("{} 获取当前客户端用户信息失败 {}", req.request_id());
+                    LOG_ERROR("{} 获取当前客户端用户信息失败", req.request_id());
                     return err_response("获取当前客户端用户信息失败");
                 }
                 // 4. 将处理结果通知给申请人
@@ -817,6 +826,8 @@ namespace zht_im
                     chat_session->mutable_chat_session_info()->set_chat_session_id(rsp.new_session_id());
                     chat_session->mutable_chat_session_info()->set_chat_session_name(process_user_rsp->user_info().nickname());
                     chat_session->mutable_chat_session_info()->set_avatar(process_user_rsp->user_info().avatar());
+                    apply_conn->send(notify.SerializeAsString(), websocketpp::frame::opcode::value::binary);
+                    LOG_DEBUG("通知申请人创建会话");
                 }
                 if (req.agree() && process_conn)
                 {
@@ -828,6 +839,7 @@ namespace zht_im
                     chat_session->mutable_chat_session_info()->set_chat_session_name(process_user_rsp->user_info().nickname());
                     chat_session->mutable_chat_session_info()->set_avatar(process_user_rsp->user_info().avatar());
                     process_conn->send(notify.SerializeAsString(), websocketpp::frame::opcode::value::binary);
+                    LOG_DEBUG("通知处理人创建会话");
                 }
             }
             // 6. 对客户端进行响应
@@ -1503,7 +1515,9 @@ namespace zht_im
             if (target_rsp.success())
                 for (int i = 0; i < target_rsp.target_id_list_size(); ++i)
                 {
-                    auto conn = _connections->connection(target_rsp.target_id_list(i));
+                    std::string notify_uid = target_rsp.target_id_list(i);
+                    if(notify_uid != *uid) continue; // 不通知自己
+                    auto conn = _connections->connection(notify_uid);
                     if (!conn)
                         continue;
                     zht_im::NotifyMessage notify;

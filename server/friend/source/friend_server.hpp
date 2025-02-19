@@ -372,8 +372,7 @@ namespace zht_im
                 bool ret = GetRecentMsg(rid, f.chat_session_id, msg);
                 if(ret == false)
                 {
-                    LOG_ERROR("{} - 获取会话消息失败", rid);
-                    return err_response(rid, "获取会话消息失败");
+                    continue;
                 }
                 chat_session_info->mutable_prev_message()->CopyFrom(msg);
             }
@@ -386,8 +385,7 @@ namespace zht_im
                 bool ret = GetRecentMsg(rid, f.chat_session_id, msg);
                 if(ret == false)
                 {
-                    LOG_ERROR("{} - 获取会话消息失败", rid);
-                    return err_response(rid, "获取会话消息失败");
+                    continue;
                 }
                 chat_session_info->mutable_prev_message()->CopyFrom(msg);
             }
@@ -505,14 +503,15 @@ namespace zht_im
             }
             if(rsp.success() == false)
             {
-                LOG_ERROR("{} - 获取最后一条消息失败 - {}", rid, rsp.errmsg());
+                LOG_ERROR("{} - 获取会话 {} 最后一条消息失败 - {}", rid, cssid, rsp.errmsg());
                 return false;
             }
             if(rsp.msg_list_size() > 0)
             {
                 msg.CopyFrom(rsp.msg_list(0));
+                return true;
             }
-            return true;
+            return false;
         }
         bool GetUserInfo(
             const std::string &rid, const std::unordered_set<std::string> &uid_list, std::unordered_map<std::string, UserInfo>& res)
