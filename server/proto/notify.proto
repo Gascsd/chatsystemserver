@@ -11,29 +11,29 @@ enum NotifyType {
     FRIEND_REMOVE_NOTIFY = 4;
 } 
 message NotifyFriendAddApply {
-    UserInfo user_info = 1; //申请人信息
+    UserInfo user_info = 1;                                     //申请人信息
 } 
 message NotifyFriendAddProcess {
     bool agree = 1;
-    UserInfo user_info = 2; //处理人信息
+    UserInfo user_info = 2;                                     //处理人信息
 } 
 message NotifyFriendRemove {
-    string user_id = 1; //删除自己的用户 ID
+    string user_id = 1;                                         //删除自己的用户 ID
 } 
 message NotifyNewChatSession {
-    ChatSessionInfo chat_session_info = 1; //新建会话信息
+    ChatSessionInfo chat_session_info = 1;                      //新建会话信息
 } 
 message NotifyNewMessage {
-    MessageInfo message_info = 1; //新消息
+    MessageInfo message_info = 1;                               //新消息
 } 
 message NotifyMessage {
-    optional string notify_event_id = 1;//通知事件操作 id（有则填无则忽略）
-    NotifyType notify_type = 2;//通知事件类型
-    oneof notify_remarks { //事件备注信息
+    optional string notify_event_id = 1;                        //通知事件操作 id（有则填无则忽略）
+    NotifyType notify_type = 2;                                 //通知事件类型
+    oneof notify_remarks {                                      //事件备注信息
         NotifyFriendAddApply friend_add_apply = 3;
         NotifyFriendAddProcess friend_process_result = 4;
         NotifyFriendRemove friend_remove = 7;
-        NotifyNewChatSession new_chat_session_info = 5;//会话信息
-        NotifyNewMessage new_message_info = 6;//消息信息
+        NotifyNewChatSession new_chat_session_info = 5;         //会话信息
+        NotifyNewMessage new_message_info = 6;                  //消息信息
     } 
 }

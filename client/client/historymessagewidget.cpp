@@ -1,0 +1,408 @@
+#include "HistoryMessageWidget.h"
+
+#include <QGridLayout>
+#include <QRadioButton>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QDateTimeEdit>
+#include <QLabel>
+#include <QScrollArea>
+#include <QScrollBar>
+#include <QVBoxLayout>
+#include <QFileDialog>
+
+#include "debug.h"
+#include "model/DataCenter.h"
+#include "Toast.h"
+#include "SoundRecorder.h"
+
+using namespace model;
+
+HistoryItem* HistoryItem::makeHistoryItem(const Message& message)
+{
+	// 1. 创建对象
+	HistoryItem* item = new HistoryItem();
+	item->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+	
+	// 2. 创建布局
+	QGridLayout* layout = new QGridLayout();
+	layout->setVerticalSpacing(0);
+	layout->setHorizontalSpacing(10);
+	layout->setContentsMargins(0, 0, 0, 0);
+	item->setLayout(layout);
+
+	// 3. 创建头像
+	QPushButton* avatarBtn = new QPushButton();
+	avatarBtn->setFixedSize(40, 40);
+	avatarBtn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+	avatarBtn->setIconSize(QSize(40, 40));
+	avatarBtn->setIcon(message._sender._avatar);
+	avatarBtn->setStyleSheet("QPushButton { border: none; }");
+
+	// 4. 创建昵称和时间
+	QLabel* nameLabel = new QLabel();
+	nameLabel->setText(message._sender._nickname + " | " + message._time);
+	nameLabel->setFixedHeight(20); // 设置为头像的一半
+	nameLabel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+
+	// 5. 消息内容部分
+	QWidget* contentWidget = nullptr;
+	if (message._messageType == IMAGE_TYPE)
+	{
+		contentWidget = new ImageButton(message._fileId, message._content);
+	}
+	else if (message._messageType == FILE_TYPE)
+	{
+		contentWidget = new FileLabel(message._fileId, message._fileName);
+	}
+	else if (message._messageType == TEXT_TYPE)
+	{
+		QLabel* label = new QLabel();
+		label->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+		label->setWordWrap(true);
+		label->setText(QString(message._content));
+		label->adjustSize(); // 让 label 能够自动设置大小
+		contentWidget = label;
+	}
+	else if (message._messageType == SPEECH_TYPE)
+	{
+		contentWidget = new SpeechLabel(message._fileId);
+	}
+	else
+	{
+		LOG() << "错误的消息类型 messageType=" << message._messageType;
+	}
+
+	// 6. 把上述控件添加到布局
+	layout->addWidget(avatarBtn, 0, 0, 2, 1);
+	layout->addWidget(nameLabel, 0, 1, 1, 1);
+	layout->addWidget(contentWidget, 1, 1, 5, 1);
+
+	return item;
+}
+
+
+
+HistoryMessageWidget::HistoryMessageWidget(QWidget *parent)
+	: QDialog(parent)
+{
+	// 1. 设置基本属性
+	this->setFixedSize(600, 600);
+	this->setWindowTitle("历史消息");
+	this->setWindowIcon(QIcon(":/resource/image/logo.png"));
+	this->setStyleSheet("QWidget { background-color: rgb(255, 255, 255); }");
+	this->setAttribute(Qt::WA_DeleteOnClose);
+
+	// 2. 创建布局管理器
+	QGridLayout* layout = new QGridLayout();
+	layout->setSpacing(10);
+	layout->setContentsMargins(30, 30, 30, 0);
+	layout->setAlignment(Qt::AlignTop);
+	this->setLayout(layout);
+
+	// 3. 创建单选按钮
+	keyRadioBtn = new QRadioButton();
+	timeRadioBtn = new QRadioButton();
+	keyRadioBtn->setText("按关键字查询");
+	timeRadioBtn->setText("按时间查询");
+
+	keyRadioBtn->setChecked(true); // 默认按关键字查询
+
+	layout->addWidget(keyRadioBtn, 0, 0, 1, 2);
+	layout->addWidget(timeRadioBtn, 0, 2, 1, 2);
+
+	// 4. 创建搜索框
+	searchEdit = new QLineEdit();
+	searchEdit->setFixedHeight(50);
+	searchEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+	searchEdit->setPlaceholderText("请输入要搜索的关键字");
+	searchEdit->setStyleSheet("QLineEdit { border: none; border-radius: 10px; background-color: rgb(240, 240, 240); font-size: 16px; padding: 10px}");
+	layout->addWidget(searchEdit, 1, 0, 1, 8);
+
+	// 5. 创建搜索按钮
+	QPushButton* searchBtn = new QPushButton();
+	searchBtn->setFixedSize(50, 50);
+	searchBtn->setIconSize(QSize(30, 30));
+	searchBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+	searchBtn->setIcon(QIcon(":/resource/image/search.png"));
+
+	QString btnStyle = "QPushButton { border: none; background-color: rgb(240, 240, 240); border-radius: 10px; }";
+	btnStyle += "QPushButton:hover { background-color: rgb(220, 220, 220);}";
+	btnStyle += "QPushButton:pressed { background-color: rgb(200, 200, 200);}";
+	searchBtn->setStyleSheet(btnStyle);
+	layout->addWidget(searchBtn, 1, 8, 1, 1);
+
+	// 6. 创建时间相关的空间
+	QLabel* beginTag = new QLabel();
+	QLabel* endTag = new QLabel();
+	beginTag->setText("开始时间");
+	endTag->setText("结束时间");
+	beginTimeEdit = new QDateTimeEdit();
+	endTimeEdit = new QDateTimeEdit();
+	beginTimeEdit->setFixedHeight(45);
+	endTimeEdit->setFixedHeight(45);
+	beginTag->hide();
+	endTag->hide();
+	beginTimeEdit->hide();
+	endTimeEdit->hide();
+
+	// 7. 创建滚动区域
+	initScrollArea(layout);
+
+	// 8. 设置槽函数
+	connect(keyRadioBtn, &QRadioButton::clicked, this, [=]() {
+		layout->removeWidget(beginTag);
+		beginTag->hide();
+		layout->removeWidget(beginTimeEdit);
+		beginTimeEdit->hide();
+		layout->removeWidget(endTag);
+		endTag->hide();
+		layout->removeWidget(endTimeEdit);
+		endTimeEdit->hide();
+
+		layout->addWidget(searchEdit, 1, 0, 1, 8);
+		searchEdit->show();
+
+		this->clear(); // 清空结果显示区
+	});
+	connect(timeRadioBtn, &QRadioButton::clicked, this, [=]() {
+		layout->removeWidget(searchEdit);
+		searchEdit->hide();
+
+		layout->addWidget(beginTag, 1, 0, 1, 1);
+		layout->addWidget(beginTimeEdit, 1, 1, 1, 3);
+		layout->addWidget(endTag, 1, 4, 1, 1);
+		layout->addWidget(endTimeEdit, 1, 5, 1, 3);
+
+		beginTag->show();
+		beginTimeEdit->show();
+		endTag->show();
+		endTimeEdit->show();
+		
+		this->clear(); // 清空结果显示区
+	});
+
+	connect(searchBtn, &QPushButton::clicked, this, &HistoryMessageWidget::clickSearchBtn);
+
+	// 构造测试数据
+#if TEST_UI
+	for (int i = 0; i < 30; ++i)
+	{
+		UserInfo sender;
+		sender._userId = QString::number(1000 + i);
+		sender._nickname = "张三" + QString::number(i);
+		sender._description = "这是签名";
+		sender._phone = "12343214321";
+		sender._avatar = QIcon(":/resource/image/defaultAvatar.png");
+		Message message = Message::makeMessage(TEXT_TYPE, "", sender, QString("消息内容消息内容消息内容消息内容消息内容" + QString::number(i)).toUtf8(), "");
+		this->addHistoryMessage(message);
+	}
+#endif // TEST_UI
+
+}
+
+HistoryMessageWidget::~HistoryMessageWidget()
+{}
+
+void HistoryMessageWidget::addHistoryMessage(const Message & message)
+{
+	HistoryItem* item = HistoryItem::makeHistoryItem(message);
+	container->layout()->addWidget(item);
+}
+
+void HistoryMessageWidget::clear()
+{
+	QVBoxLayout* layout = dynamic_cast<QVBoxLayout*>(container->layout());
+	for (int i = layout->count() - 1; i >= 0; --i)
+	{
+		QWidget* w = layout->itemAt(i)->widget();
+		if (w == nullptr) continue;
+		layout->removeWidget(w);
+		w->deleteLater();
+	}
+}
+
+void HistoryMessageWidget::clickSearchBtn()
+{
+	model::DataCenter* dataCenter = model::DataCenter::getInstance();
+	// 根据单选框的选中情况，执行两个逻辑
+	connect(dataCenter, &model::DataCenter::searchMessageDone, this, &HistoryMessageWidget::clickSearchBtnDone, Qt::UniqueConnection);
+
+	if (keyRadioBtn->isChecked()) // 按照关键词搜索
+	{
+		const QString& searchKey = searchEdit->text();
+		if (searchKey.isEmpty())
+		{
+			return;
+		}
+		dataCenter->searchMessageAsync(searchKey);
+	}
+	else // 按时间范围搜索
+	{
+		auto beginTime = beginTimeEdit->dateTime();
+		auto endTime = endTimeEdit->dateTime();
+		if (beginTime >= endTime)
+		{
+			Toast::showMessage("时间错误，开始时间大于结束时间");
+			return;
+		}
+		dataCenter->searchMessageByTimeAsync(beginTime, endTime);
+	}
+}
+
+void HistoryMessageWidget::initScrollArea(QGridLayout* layout)
+{
+	// 1. 创建滚动区域对象
+	QScrollArea* scrollArea = new QScrollArea();
+	scrollArea->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+	scrollArea->setWidgetResizable(true);
+	scrollArea->horizontalScrollBar()->setStyleSheet("QScrollBar:horizontal { height: 0; }");
+	scrollArea->verticalScrollBar()->setStyleSheet("QScrollBar:vertical { width: 2px; background-color: rgb(255, 255, 255); }");
+	scrollArea->setStyleSheet("QScrollArea { border: none; }");
+	//layout->addWidget(scrollArea, 1, 0, 1, 9);
+
+	// 2. 创建 QWidget
+	container = new QWidget();
+	container->setObjectName("container");
+	container->setStyleSheet("#container {background-color: rgb(255, 255, 255); }");
+	scrollArea->setWidget(container);
+
+	// 3. 给这个QWidget创建布局管理器
+	QVBoxLayout* vlayout = new QVBoxLayout();
+	vlayout->setSpacing(10);
+	vlayout->setContentsMargins(0, 0, 0, 0);
+	vlayout->setAlignment(Qt::AlignTop);
+	container->setLayout(vlayout);
+
+	layout->addWidget(scrollArea, 2, 0, 1, 9);
+}
+
+void HistoryMessageWidget::clickSearchBtnDone()
+{
+	// 1. 拿到结果
+	model::DataCenter* dataCenter = model::DataCenter::getInstance();
+	auto* messageResult = dataCenter->getSearchMessageResult();
+	if (messageResult == nullptr)
+		return;
+	// 2. 显示到界面上
+	this->clear();
+	for (const auto& m : *messageResult)
+	{
+		addHistoryMessage(m);
+	}
+}
+
+ImageButton::ImageButton(const QString& fileId, const QByteArray& content)
+	: fileId(fileId)
+{
+	this->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+	this->setStyleSheet("QPushButton { border: none; }");
+
+	if (!content.isEmpty()) // 直接显示
+	{
+		this->updateUI(fileId, content);
+	}
+	else // 通过网络获取
+	{
+		model::DataCenter* dataCenter = model::DataCenter::getInstance();
+		connect(dataCenter, &model::DataCenter::getSingleFileDone, this, &ImageButton::updateUI);
+		dataCenter->getSingleFileAsync(fileId);
+	}
+}
+
+void ImageButton::updateUI(const QString& fileId, const QByteArray& content)
+{
+	if (fileId != this->fileId) return;
+
+	// 如果图片尺寸太大，就要缩放
+	QImage image;
+
+	int width = image.width();
+	int height = image.height();
+	image.loadFromData(content);
+	if (image.width() >= 300)
+	{
+		width = 300;
+		height = ((double)image.height() / image.width()) * width;
+	}
+	this->resize(width, height);
+	this->setIconSize(QSize(width, height));
+	QPixmap pixmap = QPixmap::fromImage(image);
+	this->setIcon(pixmap);
+}
+
+FileLabel::FileLabel(const QString& fileId, const QString& fileName)
+	: fileId(fileId), fileName(fileName)
+{
+	this->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+	this->setText("[文件]" + fileName);
+	this->setWordWrap(true);
+	this->adjustSize();
+	this->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+
+	//if (!loadDone) // 理论上这个条件不会触发
+	//	return;
+	// 需要从网络加载数据
+	DataCenter* dataCenter = DataCenter::getInstance();
+	connect(dataCenter, &DataCenter::getSingleFileDone, this, &FileLabel::getContentDone);
+	dataCenter->getSingleFileAsync(this->fileId);
+}
+
+void FileLabel::getContentDone(const QString& fileId, const QByteArray& content)
+{
+	if (fileId != this->fileId)
+		return;
+	this->content = content;
+	this->loadDone = true;
+}
+
+void FileLabel::mousePressEvent(QMouseEvent* event)
+{
+	(void)event;
+	if (!this->loadDone)
+	{
+		Toast::showMessage("文件内容加载中，请稍后再试");
+		return;
+	}
+
+	QString filePath = QFileDialog::getSaveFileName(this, "另存为", QDir::homePath(), "*");
+	if (filePath.isEmpty())
+	{
+		LOG() << "用户取消了保存";
+		return;
+	}
+
+	writeByteArrayToFile(filePath, content);
+}
+
+SpeechLabel::SpeechLabel(const QString& fileId)
+	: fileId(fileId)
+{
+	this->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+	this->setText("[语音]");
+	this->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+
+	DataCenter* dataCenter = DataCenter::getInstance();
+	connect(dataCenter, &DataCenter::getSingleFileDone, this, &SpeechLabel::getContentDone);
+	dataCenter->getSingleFileAsync(this->fileId);
+}
+
+void SpeechLabel::getContentDone(const QString& fileId, const QByteArray& content)
+{
+	if (fileId != this->fileId)
+		return;
+	this->content = content;
+	this->loadDone = true;
+}
+
+void SpeechLabel::mousePressEvent(QMouseEvent* event)
+{
+	(void)event;
+	if (!this->loadDone)
+	{
+		Toast::showMessage("语音内容加载中，请稍后再试");
+		return;
+	}
+	SoundRecorder* soundRecorder = SoundRecorder::getInstance();
+	soundRecorder->startPlay(content);
+}

@@ -9,8 +9,15 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+
+file(GLOB PB_FILES "./proto/*.proto")
+
+if(APPLE) # 设置在MacOS下的Qt路径
+    set(CMAKE_PREFIX_PATH /Users/zht/Qt/6.7.3/macos)
+endif()
+
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets Network WebSockets Protobuf Multimedia)
 
 set(PROJECT_SOURCES
         main.cpp
@@ -22,7 +29,33 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(client
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
+        model/data.h
+        resource.qrc
+        sessionfriendarea.cpp
+        sessionfriendarea.h
+        debug.h
+
+        utils.hpp
+        messageshowarea.h messageshowarea.cpp
+        messageeditarea.h messageeditarea.cpp
+        selfinfowidget.h selfinfowidget.cpp
+        userinfowidget.h userinfowidget.cpp
+        sessiondetailwidget.h sessiondetailwidget.cpp
+        choosefrienddialog.h choosefrienddialog.cpp
+        groupsessiondetailwidget.h groupsessiondetailwidget.cpp
+        addfrienddialog.h addfrienddialog.cpp
+        historymessagewidget.h historymessagewidget.cpp
+        LoginWidget.h LoginWidget.cpp
+        PhoneLoginWidegt.h PhoneLoginWidegt.cpp
+        Toast.h Toast.cpp
+        model/DataCenter.h model/DataCenter.cpp
+        network/NetClient.h network/NetClient.cpp
+        VerifyCodeWidget.h VerifyCodeWidget.cpp
+        SoundRecorder.h SoundRecorder.cpp
     )
+
+    qt_add_protobuf(client PROTO_FILES ${PB_FILES})
+
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET client APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
 #                 ${CMAKE_CURRENT_SOURCE_DIR}/android)
@@ -41,7 +74,7 @@ else()
     endif()
 endif()
 
-target_link_libraries(client PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
+target_link_libraries(client PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt6::Network Qt6::WebSockets Qt6::Protobuf Qt6::Multimedia)
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an
