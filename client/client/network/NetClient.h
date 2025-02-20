@@ -21,14 +21,14 @@ class NetClient : public QObject
     Q_OBJECT
 private:
     // 定义重要常量. ip 都暂时使用本地的环回 ip. 端口号约定成 9000 和 9001
-    const QString HTTP_URL = "http://127.0.0.1:9000";
-    const QString WEBSOCKET_URL = "ws://127.0.0.1:9001/ws";
+    // const QString HTTP_URL = "http://127.0.0.1:9000";
+    // const QString WEBSOCKET_URL = "ws://127.0.0.1:9001/ws";
 
     // const QString HTTP_URL = "http://192.168.171.137:9000";
     // const QString WEBSOCKET_URL = "ws://192.168.171.137:9001/ws";
 
-    // const QString HTTP_URL = "http://106.54.222.150:9000";
-    // const QString WEBSOCKET_URL = "ws://106.54.222.150:9001/ws";
+     const QString HTTP_URL = "http://106.54.222.150:9000";
+     const QString WEBSOCKET_URL = "ws://106.54.222.150:9001/ws";
 
     // const QString HTTP_URL = "http://1011346jjmq38.vicp.fun:9000";
     // const QString WEBSOCKET_URL = "ws://1011346jjmq38.vicp.fun:9001/ws";
