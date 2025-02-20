@@ -301,6 +301,7 @@ void MessageEditArea::sendSpeech(const QString& path)
         LOG() << "语音文件加载失败";
         return;
     }
+    LOG() << "语音文件加载成功，准备发送";
     dataCenter->sendSpeechMessageAsync(dataCenter->getCurrentChatSessionId(), content);
 }
 

@@ -402,7 +402,7 @@ namespace network
         }
         req.setMessage(messageContent);
         QByteArray body = req.serialize(&serializer);
-        LOG() << "[获取最近消息列表] 发送请求 requestId=" << req.requestId() << ", loginSessionId=" << loginSessionId <<
+        LOG() << "[发送消息] 发送请求 requestId=" << req.requestId() << ", loginSessionId=" << loginSessionId <<
             " chatSessionId=" << chatSessionId << " messageType=" << req.message().messageType();
 
         QNetworkReply* httpResp = sendHttpRequest("/service/message_transmit/new_message", body);
@@ -413,14 +413,14 @@ namespace network
             auto resp = handleHttpResponse<zht_im::NewMessageRsp>(httpResp, &ok, &reason);
             if (!ok)
             {
-                LOG() << "[获取最近消息列表] 出错, requestId=" << req.requestId() << ", reason = " << reason;
+                LOG() << "[发送消息] 出错, requestId=" << req.requestId() << ", reason = " << reason;
                 return;
             }
 
             // 发送信号通知调用逻辑，已经处理完毕响应
             emit dataCenter->sendMessageDone(messageType, content, extraInfo); // 这是在发起一个信号
 
-            LOG() << "[获取最近消息列表] 处理响应完毕 requestId=" << req.requestId();
+            LOG() << "[发送消息] 处理响应完毕 requestId=" << req.requestId();
         });
     }
 

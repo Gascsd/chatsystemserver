@@ -220,7 +220,7 @@ QWidget *MessageItem::makeFileMessagtItem(bool isLeft, const QString& fileId, co
 
 QWidget *MessageItem::makeSpeechMessagtItem(bool isLeft, const Message& message)
 {
-    MessageContentLabel* messageContentLabel = new MessageContentLabel(isLeft, "[语音]", message._messageType, message._fileId, "", QByteArray());
+    MessageContentLabel* messageContentLabel = new MessageContentLabel(isLeft, "[语音]", message._messageType, message._fileId, "", message._content);
     return messageContentLabel;
 }
 
