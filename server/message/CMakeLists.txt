@@ -69,9 +69,9 @@ target_link_libraries(${target} -lgflags
     -lspdlog -lfmt -lbrpc -lssl -lcrypto 
     -lprotobuf -lleveldb -letcd-cpp-api 
     -lcpprest -lcurl -lodb-mysql -lodb -lodb-boost
-    /usr/lib/x86_64-linux-gnu/libjsoncpp.so.19
     -lcpr -lelasticlient
-    /usr/lib/libamqpcpp.so.4.3.27 -lev
+    /usr/local/lib/libjsoncpp.so.19
+    -lev /usr/lib/libamqpcpp.so
     )
 # set(test_target "message_client")
 # set(test_files "")

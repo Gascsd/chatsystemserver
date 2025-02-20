@@ -19,14 +19,14 @@ DEFINE_string(file_service, "/service/user_service", "用户管理子服务名�
 
 DEFINE_string(mysql_host, "127.0.0.1", "MySQL服务器访问地址");
 DEFINE_string(mysql_user, "root", "MySQL服务器访问用户名");
-DEFINE_string(mysql_passwd, "zht1125x", "MySQL服务器访问密码");
+DEFINE_string(mysql_passwd, "123456", "MySQL服务器访问密码");
 DEFINE_string(mysql_db, "zht_im", "MySQL默认库名称");
 DEFINE_string(mysql_cset, "utf8", "MySQL客户端字符集");
 DEFINE_int32(mysql_port, 0, "MySQL服务器访问端口");
 DEFINE_int32(mysql_pool_count, 0, "MySQL连接池最大连接数量");
 
 DEFINE_string(mq_user, "root", "消息队列访问用户名");
-DEFINE_string(mq_pswd, "zht1125", "消息队列访问密码");
+DEFINE_string(mq_pswd, "123456", "消息队列访问密码");
 DEFINE_string(mq_host, "127.0.0.1:5672", "消息队列访问服务器地址信息 host:port");
 DEFINE_string(mq_msg_exchange, "msg_exchange", "持久化消息的发布交换机名称");
 DEFINE_string(mq_msg_queue, "msg_queue", "持久化消息的发布队列名称");

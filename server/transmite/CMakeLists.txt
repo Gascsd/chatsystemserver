@@ -63,8 +63,8 @@ add_executable(${target} ${src_files} ${proto_srcs} ${odb_srcs})
 target_link_libraries(${target} -lgflags
     -lspdlog -lfmt -lbrpc -lssl -lcrypto 
     -lprotobuf -lleveldb -letcd-cpp-api 
-    -lcpprest -lcurl -lodb-mysql -lodb -lodb-boost
-    /usr/lib/libamqpcpp.so.4.3 -lev -lpthread
+    -lcpprest -lcurl -lodb-mysql -lodb -lodb-boost -lpthread
+    /usr/lib/libamqpcpp.so -lev 
     )
 
 # set(transmite_user_client "transmite_user_client")

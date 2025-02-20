@@ -21,7 +21,7 @@ DEFINE_string(es_host, "http://127.0.0.1:9200/", "ES搜索引擎服务器URL");
 
 DEFINE_string(mysql_host, "127.0.0.1", "MySQL服务器访问地址");
 DEFINE_string(mysql_user, "root", "MySQL服务器访问用户名");
-DEFINE_string(mysql_passwd, "zht1125x", "MySQL服务器访问密码");
+DEFINE_string(mysql_passwd, "123456", "MySQL服务器访问密码");
 DEFINE_string(mysql_db, "zht_im", "MySQL默认库名称");
 DEFINE_string(mysql_cset, "utf8", "MySQL客户端字符集");
 DEFINE_int32(mysql_port, 0, "MySQL服务器访问端口");

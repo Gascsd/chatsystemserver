@@ -64,7 +64,7 @@ target_link_libraries(${target} -lgflags
     -lspdlog -lfmt -lbrpc -lssl -lcrypto 
     -lprotobuf -lleveldb -letcd-cpp-api 
     -lcpprest -lcurl -lodb-mysql -lodb -lodb-boost
-    /usr/lib/x86_64-linux-gnu/libjsoncpp.so.19
+    /usr/local/lib/libjsoncpp.so.19
     -lcpr -lelasticlient
     )
 

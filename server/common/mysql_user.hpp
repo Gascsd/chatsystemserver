@@ -30,7 +30,7 @@ namespace zht_im
             }
             catch (const std::exception &e)
             {
-                LOG_ERROR("新增用户失败 {}:{} ", user->nickname(), e.what());
+                LOG_ERROR("新增用户失败 {}:{} ", *user->nickname(), e.what());
                 return false;
             }
             return true;
