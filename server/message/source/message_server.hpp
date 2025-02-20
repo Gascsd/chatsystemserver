@@ -69,6 +69,12 @@ namespace zht_im
             boost::posix_time::ptime etime = boost::posix_time::from_time_t(request->over_time());
             // 2. 访问数据库，从数据库中按时间进行范围查询，获取消息简略信息（消息 ID，会话 ID，消息类型，产生时间，发送者用户 ID，文本消息内容，文件消息元信息）
             auto msg_list = _mysql_message->range(chat_ssid, stime, etime);
+            if(msg_list.empty())
+            {
+                response->set_request_id(rid);
+                response->set_success(true);
+                return;
+            }
             // 3. 组织消息中所有文件消息的文件ID，并从文件子服务中进行下载
             std::unordered_set<std::string> file_id_lists;
             for (const auto &msg : msg_list)
@@ -166,6 +172,12 @@ namespace zht_im
             int count = request->msg_count();
             // 2. 从数据库中获取最近的消息元信息
             auto msg_list = _mysql_message->recent(chat_ssid, count);
+            if(msg_list.empty())
+            {
+                response->set_request_id(rid);
+                response->set_success(true);
+                return;
+            }
             // 3. 组织消息中所有文件消息的文件ID，并从文件子服务中进行下载
             std::unordered_set<std::string> file_id_lists;
             for (const auto &msg : msg_list)
@@ -264,6 +276,12 @@ namespace zht_im
             std::string skey = request->search_key();
             // 2. 从ES搜索引擎中进行关键字消息搜索，得到消息列表
             auto msg_list = _es_message->search(skey, chat_ssid);
+            if(msg_list.empty())
+            {
+                response->set_request_id(rid);
+                response->set_success(true);
+                return;
+            }
             // 3. 组织所有消息的用户ID，从用户子服务中获取用户信息
             std::unordered_set<std::string> user_id_lists;
             for (const auto &msg : msg_list)

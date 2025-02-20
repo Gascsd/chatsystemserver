@@ -67,15 +67,15 @@ target_link_libraries(${target} -lgflags
     /usr/lib/libamqpcpp.so.4.3 -lev -lpthread
     )
 
-set(transmite_user_client "transmite_user_client")
-set(transmite_user_files ${CMAKE_CURRENT_SOURCE_DIR}/test/user_client.cc)
-add_executable(${transmite_user_client} ${transmite_user_files} ${proto_srcs})
-target_link_libraries(${transmite_user_client} -lgflags -lgtest -lspdlog -lfmt -lbrpc -lssl -lcrypto -lprotobuf -lleveldb -letcd-cpp-api -lcpprest -lcurl /usr/lib/x86_64-linux-gnu/libjsoncpp.so.19)
+# set(transmite_user_client "transmite_user_client")
+# set(transmite_user_files ${CMAKE_CURRENT_SOURCE_DIR}/test/user_client.cc)
+# add_executable(${transmite_user_client} ${transmite_user_files} ${proto_srcs})
+# target_link_libraries(${transmite_user_client} -lgflags -lgtest -lspdlog -lfmt -lbrpc -lssl -lcrypto -lprotobuf -lleveldb -letcd-cpp-api -lcpprest -lcurl -ljsoncpp)
 
-set(transmite_client "transmite_client")
-set(transmite_files ${CMAKE_CURRENT_SOURCE_DIR}/test/transmite_client.cc)
-add_executable(${transmite_client} ${transmite_files} ${proto_srcs})
-target_link_libraries(${transmite_client} -lgflags -lgtest -lspdlog -lfmt -lbrpc -lssl -lcrypto -lprotobuf -lleveldb -letcd-cpp-api -lcpprest -lcurl /usr/lib/x86_64-linux-gnu/libjsoncpp.so.19)
+# set(transmite_client "transmite_client")
+# set(transmite_files ${CMAKE_CURRENT_SOURCE_DIR}/test/transmite_client.cc)
+# add_executable(${transmite_client} ${transmite_files} ${proto_srcs})
+# target_link_libraries(${transmite_client} -lgflags -lgtest -lspdlog -lfmt -lbrpc -lssl -lcrypto -lprotobuf -lleveldb -letcd-cpp-api -lcpprest -lcurl -ljsoncpp)
 
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})

@@ -32,8 +32,8 @@ DEFINE_int32(redis_port, 6379, "Redis服务器访问端口");
 DEFINE_int32(redis_db, 0, "Redis默认库号");
 DEFINE_bool(redis_keep_alive, true, "Redis长连接保活选项");
 
-DEFINE_string(dms_key_id, "*************", "短信平台密钥ID");
-DEFINE_string(dms_key_secret, "*************", "短信平台密钥");
+DEFINE_string(dms_key_id, "LTAI5tMKmd9LWLzyWH2PvbhZ", "短信平台密钥ID");
+DEFINE_string(dms_key_secret, "ksPXK1SqF1jcyU5Q3iCziGtYH3j3t9", "短信平台密钥");
 
 
 int main(int argc, char* argv[])

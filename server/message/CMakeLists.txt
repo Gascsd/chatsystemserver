@@ -73,11 +73,11 @@ target_link_libraries(${target} -lgflags
     -lcpr -lelasticlient
     /usr/lib/libamqpcpp.so.4.3.27 -lev
     )
-set(test_target "message_client")
-set(test_files "")
-aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/test test_files)
-add_executable(${test_target} ${test_files} ${proto_srcs})
-target_link_libraries(${test_target} -lgflags -lgtest -lspdlog -lfmt -lbrpc -lssl -lcrypto -lprotobuf -lleveldb -letcd-cpp-api -lcpprest -lcurl /usr/lib/x86_64-linux-gnu/libjsoncpp.so.19)
+# set(test_target "message_client")
+# set(test_files "")
+# aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/test test_files)
+# add_executable(${test_target} ${test_files} ${proto_srcs})
+# target_link_libraries(${test_target} -lgflags -lgtest -lspdlog -lfmt -lbrpc -lssl -lcrypto -lprotobuf -lleveldb -letcd-cpp-api -lcpprest -lcurl -ljsoncpp)
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../common)

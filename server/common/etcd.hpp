@@ -24,7 +24,12 @@ private:
 public:
     Registrant(const std::string &host) 
         : _client(std::make_shared<etcd::Client>(host))
-        , _keep_alive(_client->leasekeepalive(3).get())
+        , _keep_alive(_client->leasekeepalive(3).get())//这里边有个与etcd建立的长连接，有可能因为某种原因连接断开了，导致租约失效
+        //我记得etcd的api客户端sdk的github上有关于保活部分的特殊处理方法来着，有兴趣你可以找找看 
+        // 好的 那现在只能这么处理了嘛
+        // 是的，目前我没有针对这里进行细致的调研，所以目前没法给你一个更好的处理方式，只能先这么着了....
+        // 好的，那就先这样吧，我晚点来调研一下，谢谢老师
+        //还有其他问题么？  目前没有啦，剩下的我来慢慢处理，如果有问题再联系您 -- 好滴，拜拜 
         , _lease_id(_keep_alive->Lease()) {}
     ~Registrant()
     {

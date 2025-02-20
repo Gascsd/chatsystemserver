@@ -23,7 +23,7 @@ namespace zht_im
             std::unique_lock<std::mutex> lock(_mutex);
             _uid_connections.insert(std::make_pair(uid, conn));
             _conn_clients.insert(std::make_pair(conn, Client(uid, ssid)));
-            LOG_DEBUG("新增长连接用户信息 {}-{}-{}");
+            LOG_DEBUG("新增长连接用户信息 {}-{}-{}", (uint64_t)conn.get(), uid, ssid);
         }
         server_t::connection_ptr connection(const std::string &uid)
         {

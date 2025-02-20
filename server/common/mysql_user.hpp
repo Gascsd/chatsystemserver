@@ -104,6 +104,10 @@ namespace zht_im
         std::vector<User> select_multi_users(const std::vector<std::string> &id_list)
         {
             // select * from user where id in(id1, id2, ...)
+            if(id_list.empty())
+            {
+                return std::vector<User>();
+            }
             std::vector<User> res;
             std::stringstream ss;
             ss << "user_id in (";
