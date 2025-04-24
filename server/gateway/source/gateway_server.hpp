@@ -112,6 +112,7 @@ namespace zht_im
             _http_server.Post(FILE_PUT_SINGLE, (httplib::Server::Handler)std::bind(&GatewayServer::PutSingleFile, this, std::placeholders::_1, std::placeholders::_2));
             _http_server.Post(FILE_PUT_MULTI, (httplib::Server::Handler)std::bind(&GatewayServer::PutMultiFile, this, std::placeholders::_1, std::placeholders::_2));
             _http_server.Post(SPEECH_RECOGNITION, (httplib::Server::Handler)std::bind(&GatewayServer::SpeechRecognition, this, std::placeholders::_1, std::placeholders::_2));
+            _http_server.set_mount_point("/", "../../../web/dist");
             _http_thread = std::thread([this, http_port]()
                                        { this->_http_server.listen("0.0.0.0", http_port); });
             _http_thread.detach();
@@ -792,21 +793,25 @@ namespace zht_im
             }
             if (rsp.success())
             {
-                auto process_conn = _connections->connection(*uid); // 处理人的长连接
                 auto process_user_rsp = _GetUserInfo(req.request_id(), *uid);
                 if (!process_user_rsp)
                 {
                     LOG_ERROR("{} 获取当前客户端用户信息失败", req.request_id());
                     return err_response("获取当前客户端用户信息失败");
                 }
-                auto apply_conn = _connections->connection(req.apply_user_id());
-                auto apply_user_rsp = _GetUserInfo(req.request_id(), req.request_id());
+                auto apply_user_rsp = _GetUserInfo(req.request_id(), req.apply_user_id());
                 if (!apply_user_rsp)
                 {
                     LOG_ERROR("{} 获取当前客户端用户信息失败", req.request_id());
                     return err_response("获取当前客户端用户信息失败");
                 }
                 // 4. 将处理结果通知给申请人
+                auto process_conn = _connections->connection(*uid); // 处理人的长连接
+                if(process_conn) LOG_DEBUG("找到处理人的长连接");
+                else LOG_DEBUG("未找到处理人的长连接！");
+                auto apply_conn = _connections->connection(req.apply_user_id());
+                if(process_conn) LOG_DEBUG("找到申请人的长连接");
+                else LOG_DEBUG("未找到申请人的长连接！");
                 if (apply_conn)
                 {
                     NotifyMessage notify;
@@ -836,8 +841,8 @@ namespace zht_im
                     auto chat_session = notify.mutable_new_chat_session_info();
                     chat_session->mutable_chat_session_info()->set_single_chat_friend_id(req.apply_user_id());
                     chat_session->mutable_chat_session_info()->set_chat_session_id(rsp.new_session_id());
-                    chat_session->mutable_chat_session_info()->set_chat_session_name(process_user_rsp->user_info().nickname());
-                    chat_session->mutable_chat_session_info()->set_avatar(process_user_rsp->user_info().avatar());
+                    chat_session->mutable_chat_session_info()->set_chat_session_name(apply_user_rsp->user_info().nickname());
+                    chat_session->mutable_chat_session_info()->set_avatar(apply_user_rsp->user_info().avatar());
                     process_conn->send(notify.SerializeAsString(), websocketpp::frame::opcode::value::binary);
                     LOG_DEBUG("通知处理人创建会话");
                 }
@@ -1516,7 +1521,13 @@ namespace zht_im
                 for (int i = 0; i < target_rsp.target_id_list_size(); ++i)
                 {
                     std::string notify_uid = target_rsp.target_id_list(i);
-                    if(notify_uid != *uid) continue; // 不通知自己
+                    if(notify_uid == *uid)
+                    {
+                        LOG_DEBUG("要通知的ID为{}, 当前用户ID为{},跳过通知", notify_uid, *uid);
+                        continue; // 不通知自己
+                    }
+                    LOG_DEBUG("要通知的ID为{}, 当前用户ID为{},发送通知", notify_uid, *uid);
+
                     auto conn = _connections->connection(notify_uid);
                     if (!conn)
                         continue;

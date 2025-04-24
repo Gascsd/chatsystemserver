@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  mymain1:
+    image: mymain:v3
+    container_name: mymain-v3
+    depends_on:
+      - mymain2
+  mymain2:
+    image: mymain:v4
+    container_name: mymain-v4
+    depends_on:
+      - mymain3
+  mymain3:
+    image: mymain:v5
+    container_name: mymain-v5

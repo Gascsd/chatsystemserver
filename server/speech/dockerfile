@@ -1,0 +1,18 @@
+# 声明基础镜像
+FROM ubuntu:22.04
+# 声明工作路径
+WORKDIR /im
+
+RUN mkdir -p /im/logs &&\
+    mkdir -p /im/data &&\
+    mkdir -p /im/conf &&\
+    mkdir -p /im/bin  &&\
+    touch /im/logs/speech_server.log 
+
+# 将可执行程序文件，拷贝到镜像
+COPY ./build/speech_server /im/bin
+# 将可执行程序依赖，拷贝到镜像
+COPY ./depends/ /usr/lib/x86_64-linux-gnu/
+COPY ./nc /bin/
+# 设置容器启动默认操作 --运行程序
+CMD /im/bin/speech_server -flagfile=/im/conf/speech_server.conf

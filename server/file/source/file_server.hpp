@@ -38,9 +38,17 @@ namespace zht_im
             brpc::ClosureGuard rpc_guard(done);
             response->set_request_id(request->request_id());
             // 1. 取出请求中的ID（就是文件名）
+            if(request->file_id() == "")
+            {
+                response->set_success(false);
+                response->set_errmsg("文件ID不能为空");
+                LOG_ERROR("{} 请求, 文件ID不能为空", request->request_id());
+                return;
+            }
             std::string fileId = request->file_id();
             std::string filename = _storage_path + fileId;
-            // 2. 讲文件ID作为文件名读取文件内容
+            LOG_DEBUG("读取文件{}的内容请求", filename);
+            // 2. 将文件ID作为文件名读取文件内容
             std::string body;
             bool ret = zht_im::readFile(filename, body);
             if (ret == false)

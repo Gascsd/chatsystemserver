@@ -1,0 +1,16 @@
+# 设定拉取的基础镜像 --ubuntu:22.04
+FROM ubuntu:22.04
+# 指定工作目录
+WORKDIR /
+# 将宿主机上的程序文件拷贝到镜像中
+COPY "./main" .
+
+COPY ./libgflags.so.2.2 /usr/lib/x86_64-linux-gnu/
+
+# COPY ./main.cc /
+# # 安装编译器，对程序进行编译
+# RUN apt update &&\
+#     apt install -y g++ &&\
+#     g++ main.cc -o main
+# 设定容器启动时的默认操作:运行编译生成的可执行程序
+CMD "./main"

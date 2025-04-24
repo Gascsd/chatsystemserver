@@ -31,7 +31,7 @@ namespace zht_im
             auto it = _uid_connections.find(uid);
             if(it == _uid_connections.end())
             {
-                LOG_ERROR("未找到 {} 客户端的长连接", uid);
+                LOG_WARN("未找到 {} 客户端的长连接", uid);
                 return server_t::connection_ptr();
             }
             LOG_DEBUG("找到 {} 客户端的长连接信息", uid);
